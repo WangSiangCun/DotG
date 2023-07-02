@@ -1063,7 +1063,7 @@ func TestCopyBoard(t *testing.T) {
 	b.RandomMoveByCheck()
 	b.RandomMoveByCheck()
 	fmt.Println(b, b.Boxes)
-	b1 := CopyBoard(*b)
+	b1 := CopyBoard(b)
 	b1.RandomMoveByCheck()
 	fmt.Println(b1, b1.Boxes, b, b.Boxes)
 }
