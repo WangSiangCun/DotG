@@ -16,7 +16,6 @@ type UCTNode struct {
 	Parents  *UCTNode
 	Visit    int
 	Win      int
-	UCBScore int
 	TriedMap map[string]bool
 	LastMove []*board.Edge
 }
@@ -28,7 +27,6 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		Parents:  nil,
 		Visit:    0,
 		Win:      0,
-		UCBScore: 0,
 		TriedMap: map[string]bool{},
 		LastMove: []*board.Edge{},
 	}
@@ -47,10 +45,13 @@ func (n *UCTNode) GetUCB() float64 {
 func (n *UCTNode) AddChild(child *UCTNode) {
 	n.Children = append(n.Children, child)
 }
-func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
-
-	if ees, err := n.B.GetMove(); err != nil {
-		return nil, err
+func (n *UCTNode) GetUnTriedEdges() (dGEs []*board.Edge, edges [][]*board.Edge, err error) {
+	if n.B.Status() != 0 {
+		return nil, nil, fmt.Errorf("游戏已经结束，没有可拓展边")
+	}
+	if dGEs, ees, err := n.B.GetMove(); err != nil {
+		fmt.Println(dGEs)
+		return nil, nil, err
 	} else {
 		for _, es := range ees {
 			s := fmt.Sprintf("%v", es)
@@ -59,53 +60,68 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 			}
 		}
 	}
+
 	return
 }
-func UCTSearch(b *board.Board, timeout int, iter, who int) ([]*board.Edge, error) {
+func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err error) {
 	root := NewUCTNode(b)
 	startT := time.Now()
 	for i := 0; int(time.Since(startT).Milliseconds()) < timeout || i < iter; i++ {
 		nowN := root
-		nowN, err := SelectBest(nowN)
+
+		nowN, err = SelectBest(nowN)
 		if err != nil {
 			return nil, err
 		}
 		nB := board.CopyBoard(nowN.B)
+		//fmt.Println(1)
 		res, err := Simulation(nB, who)
-		fmt.Println(nB)
+		//fmt.Println(3)
+		//fmt.Println(nB)
 		if err != nil {
 			return nil, err
 		}
 		BackUp(nowN, res)
 	}
-	bestChild := GetBestChild(root, true)
-	fmt.Println(bestChild.B)
+	bestChild, err := GetBestChild(root, true)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(root.Visit)
 	return bestChild.LastMove, nil
 }
-
-func GetBestChild(n *UCTNode, isEnd bool) *UCTNode {
+func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
 
 	var bestN *UCTNode
 	var bestUCB float64
 	bestUCB = math.MinInt32
+	if len(n.Children) == 0 {
+		return nil, fmt.Errorf("GetBestChild:错误，没有孩子结点")
+	}
 	for _, child := range n.Children {
 		cUCB := child.GetUCB()
 		if isEnd {
-			fmt.Print(cUCB, "|", child.Win/child.Visit, " ")
+			fmt.Print(cUCB, " | ", float64(child.Win)/float64(child.Visit), " | ", child.Visit, "\n ")
+
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
 			bestN = child
 		}
 	}
-
-	return bestN
+	if bestN == nil {
+		return nil, fmt.Errorf("未找到最好孩子结点")
+	}
+	return bestN, nil
 }
 func Simulation(b *board.Board, who int) (res int, err error) {
+
 	for b.Status() == 0 {
+
 		if _, err := b.RandomMoveByCheck(); err != nil {
 			return 0, err
 		}
+		//fmt.Println(b)
 	}
 	e := b.Status()
 	if e == who {
@@ -116,16 +132,38 @@ func Simulation(b *board.Board, who int) (res int, err error) {
 
 }
 func SelectBest(n *UCTNode) (*UCTNode, error) {
+	if n == nil {
+		return nil, fmt.Errorf("结点不能为空")
+	}
+
 	//如果游戏已经结束
 	if n.B.Status() != 0 {
 		return n, nil
 	}
-	if ees, err := n.GetUnTriedEdges(); err != nil {
+	if des, ees, err := n.GetUnTriedEdges(); err != nil {
 		return nil, err
 		//没有可以扩展的子结点,选择ucb值最大的子结点继续
+	} else if n.B.Status() != 0 {
+		//获取死格后游戏结束
+		if n, err = Expand(&[][]*board.Edge{des}, n); err != nil {
+			return nil, err
+		} else {
+			return n, nil
+		}
 	} else if len(ees) == 0 {
-		n = GetBestChild(n, false)
+		//选择一个最好的孩子
+		n, err = GetBestChild(n, false)
+
+		if err != nil {
+
+			return nil, err
+		}
+		//继续选择
 		n, err = SelectBest(n)
+		if err != nil {
+			return nil, err
+		}
+		return n, err
 	} else {
 		if n, err = Expand(&ees, n); err != nil {
 			return nil, err
@@ -133,7 +171,6 @@ func SelectBest(n *UCTNode) (*UCTNode, error) {
 			return n, nil
 		}
 	}
-	return n, nil
 }
 func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	//随机选一个扩展

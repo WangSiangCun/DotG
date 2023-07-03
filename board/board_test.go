@@ -1053,17 +1053,16 @@ func BenchmarkBoard_GetEdgesByIdentifyingChains(b *testing.B) {
 			return
 		}
 		if bb.Status() != 0 {
+			//fmt.Println(bb)
 			bb = NewBoard()
+
 		}
 	}
 }
 func TestCopyBoard(t *testing.T) {
 	b := NewBoard()
-	b.RandomMoveByCheck()
-	b.RandomMoveByCheck()
-	b.RandomMoveByCheck()
+	b.MoveAndCheckout(&Edge{5, 6}, &Edge{4, 7}, &Edge{5, 8}, &Edge{6, 7})
 	fmt.Println(b, b.Boxes)
 	b1 := CopyBoard(b)
-	b1.RandomMoveByCheck()
 	fmt.Println(b1, b1.Boxes, b, b.Boxes)
 }

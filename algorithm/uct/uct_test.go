@@ -11,7 +11,7 @@ func TestUCTNode_GetUnTriedEdges(t *testing.T) {
 	ms, _ := b.RandomMove()
 	fmt.Println(ms)
 	n := NewUCTNode(b)
-	tri, err := n.GetUnTriedEdges()
+	_, tri, err := n.GetUnTriedEdges()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,22 +28,22 @@ func TestSimulation(t *testing.T) {
 func TestUCTSearch(t *testing.T) {
 	b := board.NewBoard()
 	for b.Status() == 0 {
-		nb := board.CopyBoard(b)
-		es, err := UCTSearch(nb, 2000, 10000, 1)
+		es, err := Search(b, 2000, 2000, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		b.MoveAndCheckout(es...)
-		nb1 := board.CopyBoard(b)
 		fmt.Println(es, b)
+		fmt.Println("-------------------------")
 
-		es, err = UCTSearch(nb1, 1000, 10000, 2)
+		es, err = Search(b, 1000, 4000, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
 		b.MoveAndCheckout(es...)
 		fmt.Println(es, b)
+		fmt.Println("-------------------------")
 	}
 
 }
