@@ -55,7 +55,11 @@ func TestSelectBest(t *testing.T) {
 }
 func TestSearch(t *testing.T) {
 	b := board.NewBoard()
+	for i := 0; i < 10; i++ {
+		b.RandomMoveByCheck()
+	}
 	for b.Status() == 0 {
+
 		start := time.Now()
 		es, err := Search(b, 0, 20000, 1)
 		if err != nil {
@@ -67,6 +71,7 @@ func TestSearch(t *testing.T) {
 		if b.Status() != 0 {
 			break
 		}
+
 		start = time.Now()
 		es, err = Search(b, 0, 10000, 2)
 		if err != nil {

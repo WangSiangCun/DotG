@@ -79,13 +79,13 @@ func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err e
 		if err != nil {
 			return nil, err
 		}
-		BackUp(nowN, res)
+		BackUp(nowN, res, who)
 	}
 	bestChild, err := GetBestChild(root, true)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(root.Visit)
+	fmt.Printf("Tatal:%d \n", root.Visit)
 	return bestChild.LastMove, nil
 }
 func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
@@ -114,8 +114,7 @@ func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
 		return nil, fmt.Errorf("未找到最好孩子结点")
 	}
 	if isEnd {
-		fmt.Print("Select:\n UCB:", bestUCB, "  w/v: ", float64(n.Win)/float64(n.Visit), "\n ")
-
+		fmt.Printf("Select:\n UCB:%v  w/v: %v Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
 	}
 	return bestN, nil
 }
@@ -188,9 +187,14 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	return nN, nil
 
 }
-func BackUp(n *UCTNode, res int) {
+func BackUp(n *UCTNode, res int, who int) {
 	for n != nil {
-		n.Win += res
+		if n.B.Now == who {
+			n.Win += res
+		} else {
+			n.Win += 1 - res
+		}
+
 		n.Visit++
 		n = n.Parents
 	}
