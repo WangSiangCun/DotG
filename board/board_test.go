@@ -832,11 +832,12 @@ func TestBoard_GetDChainEdges2(t *testing.T) {
 	boxMark := map[int]bool{}
 	err = b.GetChain(1, 1, boxMark, c, true)
 	if err != nil {
+		t.Fatal(err)
 		return
 	}
 	fmt.Println(c)
-	es, _ := b.GetDChainEdges(3, 1, c, c.Length, true)
-	err = b.Move(es...)
+	es, _ := b.GetDChainEdges(3, 1, c, c.Length-1, true)
+	err = b.MoveAndCheckout(es...)
 	if err != nil {
 		return
 	}
@@ -867,7 +868,7 @@ func TestBoard_GetDChainEdges3(t *testing.T) {
 	fmt.Println("---------------------")
 }
 func TestBoard_GetDChainEdges4(t *testing.T) {
-	//死短链 双交
+	//死短链 全吃
 	b := NewBoard()
 	err := b.MoveAndCheckout(&Edge{0, 1}, &Edge{1, 0}, &Edge{2, 1}, &Edge{0, 3}, &Edge{2, 3})
 	if err != nil {
@@ -881,8 +882,33 @@ func TestBoard_GetDChainEdges4(t *testing.T) {
 		return
 	}
 	fmt.Println(c)
-	es, _ := b.GetDChainEdges(1, 1, c, c.Length, true)
-	err = b.Move(es...)
+	es, _ := b.GetDChainEdges(1, 1, c, c.Length-1, true)
+	err = b.MoveAndCheckout(es...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(b)
+	fmt.Println("---------------------")
+}
+func TestBoard_GetDChainEdges5(t *testing.T) {
+	//长链 全捕获
+	b := NewBoard()
+	err := b.MoveAndCheckout(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 2}, &Edge{1, 4}, &Edge{3, 0}, &Edge{3, 4}, &Edge{3, 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(b)
+	c := NewChain()
+	boxMark := map[int]bool{}
+	err = b.GetChain(3, 1, boxMark, c, true)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	fmt.Println(c)
+	es, _ := b.GetDChainEdges(1, 1, c, c.Length-1, true)
+	err = b.MoveAndCheckout(es...)
 	if err != nil {
 		return
 	}
@@ -1032,14 +1058,16 @@ func TestBoard_GetEdgesByIdentifyingChains(t *testing.T) {
 	for i := 0; i <= 100000; i++ {
 		b := NewBoard()
 		for b.Status() == 0 {
+			//fmt.Println("front:", b)
 			//es, err := b.RandomMoveByCheck()
+			//fmt.Println("end:", b)
 			_, err := b.RandomMoveByCheck()
-			//fmt.Println(es)
+
 			if err != nil {
 				t.Fatal(err)
 				return
 			}
-			//fmt.Println(b.String(), b.Boxes, "\n----------------------")
+			//fmt.Println(es, "\n----------------------")
 		}
 		//fmt.Println(b.String(), b.Boxes)
 	}

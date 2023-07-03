@@ -83,10 +83,11 @@ func NewBoard() *Board {
 
 // CopyBoard 拷贝棋盘
 func CopyBoard(b *Board) *Board {
+	//fmt.Println("front3", b)
 	nB := NewBoard()
 	t := 0
-	for i := 1; i < 11; i += 1 {
-		for j := 1; j < 11; j += 1 {
+	for i := 0; i < 11; i += 1 {
+		for j := 0; j < 11; j += 1 {
 			nB.State[i][j] = b.State[i][j]
 			if i&1 == 1 && j&1 == 1 {
 				nB.Boxes[t].X = b.Boxes[t].X
@@ -102,6 +103,7 @@ func CopyBoard(b *Board) *Board {
 	nB.Turn = b.Turn
 	nB.S[1] = b.S[1]
 	nB.S[2] = b.S[2]
+	//fmt.Println("front4", nB)
 	return nB
 }
 
@@ -255,7 +257,7 @@ func IsBox(boxX, boxY int) bool {
 }
 
 // Move 移动所在边但不会占领
-func (b *Board) Move(isTurn bool, edges ...*Edge) error {
+func (b *Board) Move(edges ...*Edge) error {
 	for _, edge := range edges {
 		if b.State[edge.X][edge.Y] != 0 {
 			s := fmt.Sprintf("%s\n", b.String())
@@ -266,10 +268,7 @@ func (b *Board) Move(isTurn bool, edges ...*Edge) error {
 		b.State[edge.X][edge.Y] = 1
 	}
 	b.Now ^= 3
-	if isTurn {
-		b.Turn++
-	}
-
+	b.Turn++
 	return nil
 }
 
@@ -311,8 +310,8 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 }
 
 // MoveAndCheckout Move并checkout
-func (b *Board) MoveAndCheckout(isTurn bool, edges ...*Edge) error {
-	if err := b.Move(isTurn, edges...); err != nil {
+func (b *Board) MoveAndCheckout(edges ...*Edge) error {
+	if err := b.Move(edges...); err != nil {
 		return err
 	} else if err = b.CheckoutEdge(edges...); err != nil {
 		return err
@@ -320,94 +319,42 @@ func (b *Board) MoveAndCheckout(isTurn bool, edges ...*Edge) error {
 	return nil
 }
 
-// GetMove 获得checkout后的moves ，会首先占领死格,返回的dGEs是占领的死格边（已经占领）,ees是找到的死树边（未占领）
-func (b *Board) GetMove2() (ees [][]*Edge, err error) {
-	flag := false
+// moves ，会首先占领死格,返回的dGEs是占领的死格边（已经占领）,ees是找到的死树边（未占领）,
+func (b *Board) GetMove() (ees [][]*Edge, err error) {
+	//	fmt.Println("front1", b)
+	//拷贝棋盘操作
+	rootBoard := CopyBoard(b)
+	//	fmt.Println("front2", rootBoard)
 	dGEs := []*Edge{}
 	//占领所有死格
-	if dGEs, err = b.GetDGridEdges(); err != nil {
+	if dGEs, err = rootBoard.GetDGridEdges(); err != nil {
 		return nil, err
 	} else {
-		for _, dGE := range dGEs {
-			//fmt.Println(dGE)
-			if err = b.MoveAndCheckout(false, dGE); err != nil {
-				return nil, err
-			}
-			flag = true
-		}
-	}
-	//获得校验后的边
-	ees, err = b.GetEdgesByIdentifyingChains()
-	//for _, es := range ees {
-	//fmt.Println(es)
-	//}
-	if err != nil {
-		return nil, err
-	}
-	if len(ees) == 0 && !flag {
-		fmt.Println(b)
-		/*for i := 1; i < 11; i += 2 {
-			for j := 1; j < 11; j += 2 {
-				t, _ := b.GetBoxType(i, j)
-				fmt.Println(t)
-			}
-		}*/
-
-		chains, err := b.GetChains()
-		if err != nil {
+		if err = rootBoard.MoveAndCheckout(dGEs...); err != nil {
 			return nil, err
 		}
-		for _, c := range chains {
-			fmt.Println(c)
-		}
-		return nil, fmt.Errorf("没有可移动的边")
-	}
-	return ees, nil
-}
-
-// GetMove 获得checkout后的moves ，会首先占领死格,返回的dGEs是占领的死格边（已经占领）,ees是找到的死树边（未占领）,
-func (b *Board) GetMove() (dGEs []*Edge, ees [][]*Edge, err error) {
-	flag := false
-	//dGEs := []*Edge{}
-	//占领所有死格
-	if dGEs, err = b.GetDGridEdges(); err != nil {
-		return nil, nil, err
-	} else {
-		for _, dGE := range dGEs {
-			//fmt.Println(dGE)
-			if err = b.MoveAndCheckout(false, dGE); err != nil {
-				return nil, nil, err
-			}
-			flag = true
-		}
 	}
 	//获得校验后的边
-	ees, err = b.GetEdgesByIdentifyingChains()
-	//for _, es := range ees {
-	//fmt.Println(es)
-	//}
+	eIDChains, err := rootBoard.GetEdgesByIdentifyingChains()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	if len(ees) == 0 && !flag {
-		fmt.Println(b)
-		/*for i := 1; i < 11; i += 2 {
-			for j := 1; j < 11; j += 2 {
-				t, _ := b.GetBoxType(i, j)
-				fmt.Println(t)
-			}
-		}*/
+	if len(eIDChains) == 0 {
+		//如果没有边，就将死格边加入，下完这些死格边游戏应当结束
+		ees = append(ees, dGEs)
+	} else {
+		//将死格边加入
+		for _, eIDC := range eIDChains {
+			eIDC = append(eIDC, dGEs...)
+		}
+		ees = append(ees, eIDChains...)
+	}
+	//fmt.Println(ees)
+	if len(ees) == 0 {
+		return nil, fmt.Errorf("GetMove: 未找到边")
+	}
 
-		chains, err := b.GetChains()
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, c := range chains {
-			fmt.Println(c)
-		}
-		return nil, nil, fmt.Errorf("没有可移动的边")
-	}
-	return dGEs, ees, nil
+	return ees, nil
 }
 
 // GetBoxType 获取格子的类型
@@ -540,6 +487,8 @@ func (b *Board) Get2FEdge() (edges []*Edge, err error) {
 				}
 				// 两边格子freedom大于3的边
 				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
+
+					//fmt.Println(b, b.State[i][j], i, j, boxesF)
 					edges = append(edges, &he)
 				}
 			}
@@ -547,11 +496,13 @@ func (b *Board) Get2FEdge() (edges []*Edge, err error) {
 		}
 
 	}
+	//fmt.Println("2F:", edges)
 	return
 }
 
 // GetEdgesByIdentifyingChains 通过识别链的方法获得可下边,执行前确保局面无死格
 func (b *Board) GetEdgesByIdentifyingChains() (edges [][]*Edge, err error) {
+	//fmt.Println("front:", b)
 	//获取寻常边
 	twoFEdges, get2FEdgeErr := b.Get2FEdge()
 	if get2FEdgeErr != nil {
@@ -560,6 +511,7 @@ func (b *Board) GetEdgesByIdentifyingChains() (edges [][]*Edge, err error) {
 	for _, e := range twoFEdges {
 		edges = append(edges, []*Edge{e})
 	}
+	//fmt.Println(edges)
 	//edges = append(edges, twoFEdges...)
 
 	//获取链边
@@ -581,13 +533,14 @@ func (b *Board) GetEdgesByIdentifyingChains() (edges [][]*Edge, err error) {
 		}
 
 	}
-
+	//fmt.Println("chain:", chains)
 	//获取死树
 	edge, err := b.GetDTreeEdges()
 	if err != nil {
 		return
 	}
 	edges = append(edges, edge...)
+	//fmt.Println("end:", b)
 	return edges, nil
 }
 
@@ -700,13 +653,16 @@ func (b *Board) GetDTreeEdges() (edges [][]*Edge, err error) {
 						}
 
 						if f1 == 2 {
+							//判断 隔壁也有死链的特殊情况
+
+							//正常死链
 							chain := NewChain()
 							getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
 							if getChainErr != nil {
 								return nil, getChainErr
 							}
 							//全捕获
-							if es, err := b.GetDChainEdges(i, j, chain, chain.Length, false); err != nil {
+							if es, err := b.GetDChainEdges(i, j, chain, chain.Length-1, false); err != nil {
 								return nil, err
 							} else {
 								edges = append(edges, es)
@@ -927,7 +883,7 @@ func (b *Board) EatAllCBox() error {
 					if getEdgeBy1FBIErr != nil {
 						return getEdgeBy1FBIErr
 					}
-					if moveIJERR := b.Move(false, edge...); moveIJERR != nil {
+					if moveIJERR := b.Move(edge...); moveIJERR != nil {
 						return moveIJERR
 					}
 					//设置占领者颜色与分数
@@ -1023,7 +979,7 @@ func (b *Board) RandomMove() (edge *Edge, err error) {
 		return nil, fmt.Errorf("没有可移动的边")
 	}
 	randInt := rand.Intn(len(edges))
-	if err = b.Move(true, edges[randInt]); err != nil {
+	if err = b.Move(edges[randInt]); err != nil {
 		return nil, err
 	}
 	return edges[randInt], nil
@@ -1031,15 +987,16 @@ func (b *Board) RandomMove() (edge *Edge, err error) {
 
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
 func (b *Board) RandomMoveByCheck() (edge []*Edge, err error) {
-	_, ees, err := b.GetMove()
+	ees, err := b.GetMove()
+	//fmt.Println(b, ees)
 	if err != nil {
 		return nil, err
 	}
 	if len(ees) == 0 {
-		return
+		return nil, fmt.Errorf("RandomMove:未找到边")
 	}
 	randInt := rand.Intn(len(ees))
-	if err = b.MoveAndCheckout(true, ees[randInt]...); err != nil {
+	if err = b.MoveAndCheckout(ees[randInt]...); err != nil {
 		return nil, err
 	}
 	return ees[randInt], nil

@@ -11,7 +11,7 @@ func TestUCTNode_GetUnTriedEdges(t *testing.T) {
 	ms, _ := b.RandomMove()
 	fmt.Println(ms)
 	n := NewUCTNode(b)
-	_, tri, err := n.GetUnTriedEdges()
+	tri, err := n.GetUnTriedEdges()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,10 +25,37 @@ func TestSimulation(t *testing.T) {
 	}
 
 }
-func TestUCTSearch(t *testing.T) {
+func TestSelectBest(t *testing.T) {
+	b := board.NewBoard()
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if (i+j)&1 == 1 {
+				b.State[i][j] = 1
+				if i == 3 && j == 0 {
+					b.State[i][j] = 0
+				}
+
+			} else if i&1 == 1 && j&1 == 1 {
+				b.State[i][j] = 1
+				if i == 3 && j == 1 {
+					b.State[i][j] = 0
+				}
+			}
+		}
+	}
+	fmt.Println(b)
+	b.S[1] = 24
+	es, err := Search(b, 100, 100, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(es)
+}
+func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	for b.Status() == 0 {
-		es, err := Search(b, 2000, 2000, 1)
+		es, err := Search(b, 0, 100000, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -36,14 +63,42 @@ func TestUCTSearch(t *testing.T) {
 		b.MoveAndCheckout(es...)
 		fmt.Println(es, b)
 		fmt.Println("-------------------------")
-
-		es, err = Search(b, 1000, 4000, 2)
+		if b.Status() != 0 {
+			break
+		}
+		es, err = Search(b, 0, 10000, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
 		b.MoveAndCheckout(es...)
 		fmt.Println(es, b)
 		fmt.Println("-------------------------")
+	}
+
+}
+func BenchmarkSearch(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		bb := board.NewBoard()
+		for bb.Status() == 0 {
+			es, err := Search(bb, 0, 1, 1)
+			if err != nil {
+				return
+			}
+
+			bb.MoveAndCheckout(es...)
+			//fmt.Println(es, bb)
+			//fmt.Println("-------------------------")
+			if bb.Status() == 0 {
+				break
+			}
+			es, err = Search(bb, 0, 1, 2)
+			if err != nil {
+				return
+			}
+			bb.MoveAndCheckout(es...)
+			//fmt.Println(es, b)
+			//fmt.Println("-------------------------")
+		}
 	}
 
 }
