@@ -4,6 +4,7 @@ import (
 	"dotg/board"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestUCTNode_GetUnTriedEdges(t *testing.T) {
@@ -55,23 +56,24 @@ func TestSelectBest(t *testing.T) {
 func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	for b.Status() == 0 {
+		start := time.Now()
 		es, err := Search(b, 0, 100000, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
-
 		b.MoveAndCheckout(es...)
-		fmt.Println(es, b)
+		fmt.Println(es, b, time.Since(start))
 		fmt.Println("-------------------------")
 		if b.Status() != 0 {
 			break
 		}
+		start = time.Now()
 		es, err = Search(b, 0, 10000, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
 		b.MoveAndCheckout(es...)
-		fmt.Println(es, b)
+		fmt.Println(es, b, time.Since(start))
 		fmt.Println("-------------------------")
 	}
 

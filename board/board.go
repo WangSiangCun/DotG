@@ -319,42 +319,137 @@ func (b *Board) MoveAndCheckout(edges ...*Edge) error {
 	return nil
 }
 
-// moves ，会首先占领死格,返回的dGEs是占领的死格边（已经占领）,ees是找到的死树边（未占领）,
+// GetMove 会首先占领死格,返回的dGEs是占领的死格边（已经占领）,ees是找到的死树边（未占领）,
 func (b *Board) GetMove() (ees [][]*Edge, err error) {
-	//	fmt.Println("front1", b)
-	//拷贝棋盘操作
-	rootBoard := CopyBoard(b)
-	//	fmt.Println("front2", rootBoard)
-	dGEs := []*Edge{}
-	//占领所有死格
-	if dGEs, err = rootBoard.GetDGridEdges(); err != nil {
+	nB := CopyBoard(b) //用于模拟
+	if edges2f, err := nB.Get2FEdge(); err != nil {
 		return nil, err
-	} else {
-		if err = rootBoard.MoveAndCheckout(dGEs...); err != nil {
+	} else if len(edges2f) > 0 {
+		preEdges := []*Edge{}
+		//存在安全边
+		//获取死格
+		if dGEdges, err := nB.GetDGridEdges(); err != nil {
 			return nil, err
+		} else if len(dGEdges) > 0 {
+			//模拟 局面不可有死格
+			if err := nB.MoveAndCheckout(dGEdges...); err != nil {
+				return nil, err
+			}
+			preEdges = append(preEdges, dGEdges...)
 		}
-	}
-	//获得校验后的边
-	eIDChains, err := rootBoard.GetEdgesByIdentifyingChains()
-	if err != nil {
-		return nil, err
-	}
-	if len(eIDChains) == 0 {
-		//如果没有边，就将死格边加入，下完这些死格边游戏应当结束
-		ees = append(ees, dGEs)
+
+		//获取死树的全吃走法
+		if _, allEdges, err := nB.GetDTreeEdges(); err != nil {
+			return nil, err
+		} else if len(allEdges) > 0 {
+			if err := nB.MoveAndCheckout(allEdges...); err != nil {
+				return nil, err
+			}
+			preEdges = append(preEdges, allEdges...)
+		}
+		//走每种安全边
+		for _, edge2f := range edges2f {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, edge2f)
+			ees = append(ees, tempEdges)
+		}
+		//fmt.Println(edges2f)
+
 	} else {
-		//将死格边加入
-		for _, eIDC := range eIDChains {
-			eIDC = append(eIDC, dGEs...)
+		//不存在安全边
+		preEdges := []*Edge{}
+		//获取死格
+		if dGEdges, err := nB.GetDGridEdges(); err != nil {
+			return nil, err
+		} else if len(dGEdges) > 0 {
+			//模拟 局面不可有死格
+			if err := nB.MoveAndCheckout(dGEdges...); err != nil {
+				return nil, err
+			}
+			preEdges = append(preEdges, dGEdges...)
 		}
-		ees = append(ees, eIDChains...)
+		//fmt.Println("不存在安全边的获取死格", preEdges)
+		//获取死树的全吃走法
+		if doubleCrossEdges, allEdges, err := nB.GetDTreeEdges(); err != nil {
+			return nil, err
+		} else if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
+			//没有死树，只能走链
+			//获取链边
+			if chains, err := nB.GetChains(); err != nil {
+				return nil, err
+			} else {
+				for _, chain := range chains {
+					//获取其中的一条
+					boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+					for i := 0; i < 4; i++ {
+						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+						if nB.State[edgeX][edgeY] == 0 {
+							tempEdges := []*Edge{}
+							//注意加上死格
+							tempEdges = append(tempEdges, preEdges...)
+							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+							ees = append(ees, tempEdges)
+							break
+						}
+					}
+
+				}
+				if len(chains) == 0 {
+					//只有死格的特殊情况，一般不会发生
+					ees = append(ees, preEdges)
+				}
+			}
+
+		} else {
+			//有死树
+			//fmt.Println("2:", doubleCrossEdges, allEdges)
+			//有双交肯定是双交的而不是走链,双交不需要模拟，因为不走链，死格是无论如何都需要模拟的
+			//全吃后走链
+			tempEdges := []*Edge{}
+			//死格
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, doubleCrossEdges...)
+			ees = append(ees, tempEdges)
+			//全吃后走链
+			//fmt.Println("死树的双交", doubleCrossEdges)
+
+			//模拟全吃死树，防止影响走链
+			if err := nB.MoveAndCheckout(allEdges...); err != nil {
+				return nil, err
+			}
+
+			//获取链边
+			if chains, err := nB.GetChains(); err != nil {
+				return nil, err
+			} else {
+				for _, chain := range chains {
+					//获取其中的一条
+					boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+					for i := 0; i < 4; i++ {
+						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+						if nB.State[edgeX][edgeY] == 0 {
+							//全吃后走链
+							tempEdges = []*Edge{}
+							//死格
+							tempEdges = append(tempEdges, preEdges...)
+							//全吃
+							tempEdges = append(tempEdges, allEdges...)
+							//走链
+							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+							ees = append(ees, tempEdges)
+							break
+						}
+					}
+
+				}
+			}
+		}
+
 	}
 	//fmt.Println(ees)
-	if len(ees) == 0 {
-		return nil, fmt.Errorf("GetMove: 未找到边")
-	}
-
 	return ees, nil
+
 }
 
 // GetBoxType 获取格子的类型
@@ -500,50 +595,6 @@ func (b *Board) Get2FEdge() (edges []*Edge, err error) {
 	return
 }
 
-// GetEdgesByIdentifyingChains 通过识别链的方法获得可下边,执行前确保局面无死格
-func (b *Board) GetEdgesByIdentifyingChains() (edges [][]*Edge, err error) {
-	//fmt.Println("front:", b)
-	//获取寻常边
-	twoFEdges, get2FEdgeErr := b.Get2FEdge()
-	if get2FEdgeErr != nil {
-		return nil, get2FEdgeErr
-	}
-	for _, e := range twoFEdges {
-		edges = append(edges, []*Edge{e})
-	}
-	//fmt.Println(edges)
-	//edges = append(edges, twoFEdges...)
-
-	//获取链边
-	chains, err := b.GetChains()
-	for _, chain := range chains {
-		//fmt.Print(chain)
-		//fmt.Println(b)
-		//获取其中的一条
-		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-		//fmt.Println(boxX, boxY)
-		for i := 0; i < 4; i++ {
-			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-			//fmt.Println(edgeX, edgeY)
-			if b.State[edgeX][edgeY] == 0 {
-
-				edges = append(edges, []*Edge{{edgeX, edgeY}})
-				break
-			}
-		}
-
-	}
-	//fmt.Println("chain:", chains)
-	//获取死树
-	edge, err := b.GetDTreeEdges()
-	if err != nil {
-		return
-	}
-	edges = append(edges, edge...)
-	//fmt.Println("end:", b)
-	return edges, nil
-}
-
 // GetDGridEdges 获得死格的边
 func (b *Board) GetDGridEdges() (edges []*Edge, err error) {
 	edgesMark := make(map[string]bool)
@@ -593,101 +644,275 @@ func (b *Board) GetDGridEdges() (edges []*Edge, err error) {
 	return
 }
 
-// GetDTreeEdges 获得死树的边，务必保证调用此方法前局面已经没有死格
-func (b *Board) GetDTreeEdges() (edges [][]*Edge, err error) {
+type DTree struct {
+	X, Y  int
+	Chain *Chain //如果是链，则有该属性
+	Len   int
+	Type  int //0 死环，1死链
+}
 
+// GetDTreeEdges 获得死树的边，务必保证调用此方法前局面已经没有死格
+func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) {
+	dCs, dLs := []*DTree{}, []*DTree{}
 	boxesMark := map[int]bool{}
+
+	//获取信息
 	for i := 1; i < 11; i += 2 {
 		for j := 1; j < 11; j += 2 {
 			f, getFByBIErr := b.GetFByBI(i, j)
 			if err != nil {
-				return nil, getFByBIErr
+				return nil, nil, getFByBIErr
 			}
-			if f == 1 {
+			if f == 1 && !boxesMark[(i/2*5+(j/2))] {
 				//先判断是不是死环
-				if is, err := b.IsDCircle(i, j); err != nil {
-					return nil, err
-				} else if is > 0 {
-					//全捕获
-					if es, err := b.GetDCircleEdges(i, j, is-1, false); err != nil {
-						return nil, err
-					} else {
-						edges = append(edges, es)
-					}
-					//双交
-					if es, err := b.GetDCircleEdges(i, j, is-4, true); err != nil {
-						return nil, err
-					} else {
-						edges = append(edges, es)
-					}
+				//如果有两头1，则是死环这一类的，如果没有，则为死链，不用担心已经访问过的会再次访问
+				if is, err := b.IsDCircle(i, j, boxesMark); err != nil {
+					return nil, nil, err
+				} else if is > 0 || is < 0 {
+					dCs = append(dCs, &DTree{i, j, nil, is, 0})
 					continue
-				} else if is < 0 {
-					//这种情况是两头都为1自由度,但是不是死环,可是是与死环一样的策略，因为本质相同
-					//全捕获
-					is *= -1
-					if es, err := b.GetDCircleEdges(i, j, is-1, false); err != nil {
-						return nil, err
-					} else {
-						edges = append(edges, es)
-					}
-					//双交
-					if es, err := b.GetDCircleEdges(i, j, is-4, true); err != nil {
-						return nil, err
-					} else {
-						edges = append(edges, es)
-					}
-					continue
+				} else {
+					//is==0不是死环,进入死链
+					//死链
+					for k := 0; k < 4; k++ {
+						edgeX := i + d1[k][0]
+						edgeY := j + d1[k][1]
+						if b.State[edgeX][edgeY] == 0 {
+							boxX := i + d2[k][0]
+							boxY := j + d2[k][1]
+							f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
+							if getFByBIErr2 != nil {
+								return nil, nil, getFByBIErr2
+							}
 
-				}
+							if f1 == 2 {
+								chain := NewChain()
+								getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
+								if getChainErr != nil {
+									return nil, nil, err
+								}
+								dLs = append(dLs, &DTree{i, j, chain, chain.Length + 1, 1})
+							}
 
-				//死链
-				for k := 0; k < 4; k++ {
-					edgeX := i + d1[k][0]
-					edgeY := j + d1[k][1]
-					if b.State[edgeX][edgeY] == 0 {
-						boxX := i + d2[k][0]
-						boxY := j + d2[k][1]
-						f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-						if getFByBIErr2 != nil {
-							return nil, getFByBIErr2
 						}
-
-						if f1 == 2 {
-							//判断 隔壁也有死链的特殊情况
-
-							//正常死链
-							chain := NewChain()
-							getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
-							if getChainErr != nil {
-								return nil, getChainErr
-							}
-							//全捕获
-							if es, err := b.GetDChainEdges(i, j, chain, chain.Length-1, false); err != nil {
-								return nil, err
-							} else {
-								edges = append(edges, es)
-							}
-							//双交
-							if es, err := b.GetDChainEdges(i, j, chain, chain.Length-2, true); err != nil {
-								return nil, err
-							} else {
-								edges = append(edges, es)
-							}
-						}
-
 					}
+
 				}
 
 			}
 		}
 	}
+
+	if len(dCs) != 0 && len(dLs) != 0 {
+		//如果同时存在死环和死链 ,先吃完死环，死链剩一个来双交或全吃
+		edges := []*Edge{}
+		for i := 0; i < len(dCs); i++ {
+			//全吃
+			if es, err := b.GetDCircleEdges(dCs[i].X, dCs[i].Y, dCs[i].Len-1, false); err != nil {
+				return nil, nil, err
+			} else {
+				edges = append(edges, es...)
+			}
+		}
+
+		//死链剩一个来双交或全吃
+		i, j := 0, 0
+		boxesMark := map[int]bool{}
+		for l := 0; l < len(dLs)-1; l++ {
+
+			//死链
+			i = dLs[l].X
+			j = dLs[l].Y
+			for k := 0; k < 4; k++ {
+				edgeX := i + d1[k][0]
+				edgeY := j + d1[k][1]
+				if b.State[edgeX][edgeY] == 0 {
+					boxX := i + d2[k][0]
+					boxY := j + d2[k][1]
+					f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
+					if getFByBIErr2 != nil {
+						return nil, nil, getFByBIErr2
+					}
+					if f1 == 2 {
+						chain := dLs[l].Chain
+						getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
+						if getChainErr != nil {
+							return nil, nil, getChainErr
+						}
+						//全捕获
+						if es, err := b.GetDChainEdges(i, j, chain, dLs[l].Len, false); err != nil {
+							return nil, nil, err
+						} else {
+							edges = append(edges, es...)
+						}
+					}
+
+				}
+			}
+
+		}
+		edgesTemp := []*Edge{}
+		i = dLs[len(dLs)-1].X
+		j = dLs[len(dLs)-1].Y
+		for k := 0; k < 4; k++ {
+			edgeX := i + d1[k][0]
+			edgeY := j + d1[k][1]
+			if b.State[edgeX][edgeY] == 0 {
+				boxX := i + d2[k][0]
+				boxY := j + d2[k][1]
+				f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
+				if getFByBIErr2 != nil {
+					return nil, nil, getFByBIErr2
+				}
+				if f1 == 2 {
+					chain := dLs[len(dLs)-1].Chain
+					getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
+					if getChainErr != nil {
+						return nil, nil, getChainErr
+					}
+					//全捕获
+					if es, err := b.GetDChainEdges(i, j, chain, dLs[len(dLs)-1].Len, false); err != nil {
+						return nil, nil, err
+					} else {
+						edgesTemp = append(edgesTemp, es...)
+						edgesTemp = append(edgesTemp, edges...)
+					}
+					allEdges = append(allEdges, edgesTemp...)
+
+					//双交
+					if es, err := b.GetDChainEdges(i, j, chain, dLs[len(dLs)-1].Len-2, true); err != nil {
+						return nil, nil, err
+					} else {
+						edgesTemp = append(edgesTemp, es...)
+						edgesTemp = append(edgesTemp, edges...)
+					}
+					doubleCrossEdges = append(doubleCrossEdges, edgesTemp...)
+				}
+
+			}
+		}
+
+	} else if len(dCs) != 0 {
+		//只有死环，剩一个来双交或全吃
+		edges := []*Edge{}
+		for i := 0; i < len(dCs)-1; i++ {
+			//全吃
+			if es, err := b.GetDCircleEdges(dCs[i].X, dCs[i].Y, dCs[i].Len-1, false); err != nil {
+				return nil, nil, err
+			} else {
+				edges = append(edges, es...)
+			}
+		}
+		//全捕获
+		edgesTemp := []*Edge{}
+		if es, err := b.GetDCircleEdges(dCs[len(dCs)-1].X, dCs[len(dCs)-1].Y, dCs[len(dCs)-1].Len-1, false); err != nil {
+			return nil, nil, err
+		} else {
+			edgesTemp = append(edgesTemp, es...)
+			edgesTemp = append(edgesTemp, edges...)
+		}
+		allEdges = append(allEdges, edgesTemp...)
+
+		//双交
+		edgesTemp = []*Edge{}
+		if es, err := b.GetDCircleEdges(dCs[len(dCs)-1].X, dCs[len(dCs)-1].Y, dCs[len(dCs)-1].Len-4, true); err != nil {
+			return nil, nil, err
+		} else {
+			edgesTemp = append(edgesTemp, es...)
+			edgesTemp = append(edgesTemp, edges...)
+		}
+		doubleCrossEdges = append(doubleCrossEdges, edgesTemp...)
+	} else if len(dLs) != 0 {
+		edges := []*Edge{}
+		boxesMark := map[int]bool{}
+		//只有死链，剩一个来双交或全吃
+		i, j := 0, 0
+		for l := 0; l < len(dLs)-1; l++ {
+			//死链
+			i = dLs[l].X
+			j = dLs[l].Y
+			for k := 0; k < 4; k++ {
+				edgeX := i + d1[k][0]
+				edgeY := j + d1[k][1]
+				if b.State[edgeX][edgeY] == 0 {
+					boxX := i + d2[k][0]
+					boxY := j + d2[k][1]
+					f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
+					if getFByBIErr2 != nil {
+						return nil, nil, getFByBIErr2
+					}
+					if f1 == 2 {
+						chain := dLs[l].Chain
+						getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
+						if getChainErr != nil {
+							return nil, nil, getChainErr
+						}
+						//全捕获
+						if es, err := b.GetDChainEdges(i, j, chain, dLs[l].Len, false); err != nil {
+							return nil, nil, err
+						} else {
+							edges = append(edges, es...)
+						}
+					}
+
+				}
+			}
+
+		}
+		//	fmt.Println(b)
+		i = dLs[len(dLs)-1].X
+		j = dLs[len(dLs)-1].Y
+		for k := 0; k < 4; k++ {
+			edgeX := i + d1[k][0]
+			edgeY := j + d1[k][1]
+			if b.State[edgeX][edgeY] == 0 {
+				boxX := i + d2[k][0]
+				boxY := j + d2[k][1]
+				f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
+				if getFByBIErr2 != nil {
+					return nil, nil, getFByBIErr2
+				}
+				if f1 == 2 {
+					chain := dLs[len(dLs)-1].Chain
+					//全捕获
+					if es, err := b.GetDChainEdges(i, j, chain, dLs[len(dLs)-1].Len, false); err != nil {
+						return nil, nil, err
+					} else {
+						//fmt.Println("全捕获:", es, dLs[len(dLs)-1].Len)
+						edgesTemp := []*Edge{}
+						edgesTemp = append(edgesTemp, es...)
+						edgesTemp = append(edgesTemp, edges...) //edges里是之前的全捕获
+						allEdges = append(allEdges, edgesTemp...)
+
+					}
+
+					//双交
+					if es, err := b.GetDChainEdges(i, j, chain, dLs[len(dLs)-1].Len-2, true); err != nil {
+						return nil, nil, err
+					} else {
+						edgesTemp := []*Edge{}
+						//fmt.Println("双交:", es)
+						edgesTemp = append(edgesTemp, es...)
+						edgesTemp = append(edgesTemp, edges...)
+						doubleCrossEdges = append(doubleCrossEdges, edgesTemp...)
+					}
+				}
+
+			}
+		}
+
+	} else {
+		//没有死环或死链
+		return
+	}
 	return
+
 }
 
 // GetChains 获得链集合
 func (b *Board) GetChains() (chains []*Chain, err error) {
-	var boxesMark map[int]bool
-	boxesMark = map[int]bool{}
+
+	boxesMark := map[int]bool{}
 	for i := 1; i < 11; i += 2 {
 		for j := 1; j < 11; j += 2 {
 			x, y, boxToXYErr := BoxToXY(i, j)
@@ -706,7 +931,7 @@ func (b *Board) GetChains() (chains []*Chain, err error) {
 			}
 			if f == 2 {
 				chain := NewChain()
-				b.Boxes[(i/2)*5+j/2].Type, err = b.GetBoxType(i, j)
+				b.Boxes[index].Type, err = b.GetBoxType(i, j)
 				if err != nil {
 					return nil, err
 				}
@@ -747,7 +972,7 @@ func (b *Board) GetChain(boxX, boxY int, boxesMark map[int]bool, chain *Chain, i
 		return fmt.Errorf("此类型不可操作:%d", t)
 	}
 	if boxesMark[index] {
-		return nil
+		return fmt.Errorf("GetChain:该格子已被访问")
 	}
 	//加入链
 	chain.Boxes = append(chain.Boxes, b.Boxes[index])
@@ -1045,15 +1270,16 @@ func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
 }
 
 // IsDCircle 格子freedom为一时才可调用
-func (b *Board) IsDCircle(boxX, boxY int) (is int, err error) {
+func (b *Board) IsDCircle(boxX, boxY int, boxesMark map[int]bool) (is int, err error) {
+	boxesMark[(boxX/2)*5+(boxY/2)] = true
 	edgesMark := map[string]bool{}
-	if is, err = b.dfsIsDCircle(boxX, boxY, boxX, boxY, 1, edgesMark); err != nil {
+	if is, err = b.dfsIsDCircle(boxX, boxY, boxX, boxY, 1, edgesMark, boxesMark); err != nil {
 		return 0, err
 	} else {
 		return is, nil
 	}
 }
-func (b *Board) dfsIsDCircle(sBoxX, sBoxY, boxX, boxY, len int, edgesMark map[string]bool) (is int, err error) {
+func (b *Board) dfsIsDCircle(sBoxX, sBoxY, boxX, boxY, len int, edgesMark map[string]bool, boxesMark map[int]bool) (is int, err error) {
 	if !IsBox(boxX, boxY) {
 		return 0, fmt.Errorf("不是格子下标")
 	}
@@ -1067,13 +1293,14 @@ func (b *Board) dfsIsDCircle(sBoxX, sBoxY, boxX, boxY, len int, edgesMark map[st
 				return 0, err
 			} else if f == 1 {
 				ans := math.Abs(float64(sBoxX-nBX)) + math.Abs(float64(sBoxY-nBY))
+				boxesMark[(nBX/2)*5+(nBY/2)] = true
 				if ans == 2 {
 					return len + 1, nil
 				} else {
 					return -1 * (len + 1), nil //特殊情况，一般不会有，但是出现了就处理一下
 				}
 			} else if f == 2 {
-				if is, err = b.dfsIsDCircle(sBoxX, sBoxY, nBX, nBY, len+1, edgesMark); err != nil {
+				if is, err = b.dfsIsDCircle(sBoxX, sBoxY, nBX, nBY, len+1, edgesMark, boxesMark); err != nil {
 					return 0, err
 				} else {
 					return is, nil
@@ -1097,7 +1324,6 @@ func (b *Board) dfsGetDCircleEdges(boxX, boxY, len int, edgesMark map[string]boo
 	if !IsBox(boxX, boxY) {
 		return fmt.Errorf("不是格子下标")
 	}
-
 	for i := 0; i < 4; i++ {
 		nEX, nEY := boxX+d1[i][0], boxY+d1[i][1]
 		nBX, nBY := boxX+d2[i][0], boxY+d2[i][1]
@@ -1120,26 +1346,23 @@ func (b *Board) dfsGetDCircleEdges(boxX, boxY, len int, edgesMark map[string]boo
 
 // GetDChainEdges 获得死链边
 func (b *Board) GetDChainEdges(box1FX, box1FY int, c *Chain, len int, isDoubleCross bool) (edges []*Edge, err error) {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println(err)
-		}
-	}()
+
 	edgesMark := map[string]bool{}
 	if err = b.dfsChainEdges(box1FX, box1FY, edgesMark, len, &edges); err != nil {
-		return
+		return nil, err
 	} else if isDoubleCross {
 		endPointX, endPointY := -1, -1
 		for k := 0; k < 4; k++ {
 			edgeX, edgeY := box1FX+d1[k][0], box1FY+d1[k][1]
 			nextBoxX, nextBoxY := box1FX+d2[k][0], box1FY+d2[k][1]
 			if b.State[edgeX][edgeY] == 0 {
+				//获取端点相对关系
 				if nextBoxX == c.Endpoint[0].X && nextBoxY == c.Endpoint[0].Y {
 					endPointX, endPointY = c.Endpoint[1].X, c.Endpoint[1].Y
 				} else if nextBoxX == c.Endpoint[1].X && nextBoxY == c.Endpoint[1].Y {
 					endPointX, endPointY = c.Endpoint[0].X, c.Endpoint[0].Y
 				} else {
-					fmt.Println(b, c, nextBoxX, nextBoxY)
+					//fmt.Println(b, c, nextBoxX, nextBoxY)
 					chains, err := b.GetChains()
 					if err != nil {
 						return nil, err
@@ -1169,18 +1392,21 @@ func (b *Board) GetDChainEdges(box1FX, box1FY int, c *Chain, len int, isDoubleCr
 }
 func (b *Board) dfsChainEdges(sBoxX, sBoxY int, edgesMark map[string]bool, len int, edges *[]*Edge) (err error) {
 
-	if len >= 0 {
+	if len > 0 {
 		for k := 0; k < 4; k++ {
 			edgeX, edgeY := sBoxX+d1[k][0], sBoxY+d1[k][1]
 			nextBoxX, nextBoxY := sBoxX+d2[k][0], sBoxY+d2[k][1]
 			edge := &Edge{edgeX, edgeY}
-			if b.State[edgeX][edgeY] == 0 && !edgesMark[edge.String()] && nextBoxX >= 0 && nextBoxX <= 10 && nextBoxY >= 0 && nextBoxY <= 10 {
+			if b.State[edgeX][edgeY] == 0 && !edgesMark[edge.String()] {
 				*edges = append(*edges, edge)
 				edgesMark[edge.String()] = true
 				len--
-				if err = b.dfsChainEdges(nextBoxX, nextBoxY, edgesMark, len, edges); err != nil {
-					return
+				if nextBoxX >= 0 && nextBoxX <= 10 && nextBoxY >= 0 && nextBoxY <= 10 {
+					if err = b.dfsChainEdges(nextBoxX, nextBoxY, edgesMark, len, edges); err != nil {
+						return
+					}
 				}
+
 			}
 		}
 

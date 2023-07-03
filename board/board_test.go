@@ -591,7 +591,6 @@ func TestBoard_GetChain2(t *testing.T) {
 	fmt.Println(c.String(), b.String())
 
 }
-
 func TestBoard_GetChains(t *testing.T) {
 	b := NewBoard()
 	for b.Status() == 0 {
@@ -810,7 +809,7 @@ func TestBoard_GetDChainEdges(t *testing.T) {
 	}
 	fmt.Println(c)
 	es, _ := b.GetDChainEdges(3, 1, c, c.Length-2, true)
-	err = b.Move(es...)
+	err = b.MoveAndCheckout(es...)
 	if err != nil {
 		return
 	}
@@ -894,6 +893,48 @@ func TestBoard_GetDChainEdges4(t *testing.T) {
 func TestBoard_GetDChainEdges5(t *testing.T) {
 	//长链 全捕获
 	b := NewBoard()
+	err := b.MoveAndCheckout(&Edge{4, 1}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{3, 4}, &Edge{3, 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(b)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	d, a, _ := b.GetDTreeEdges()
+	fmt.Println(d, a, b)
+	err = b.MoveAndCheckout(d...)
+	fmt.Println(b, "---------------------")
+}
+func TestBoard_GetDChainEdges6(t *testing.T) {
+	//死环 全捕获
+	b := NewBoard()
+	err := b.MoveAndCheckout(&Edge{4, 3}, &Edge{4, 1}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 2}, &Edge{1, 4}, &Edge{3, 0}, &Edge{3, 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(b)
+	d, es, err := b.GetDTreeEdges()
+	fmt.Println(b, d, es)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	err = b.MoveAndCheckout(d...)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	if err != nil {
+		return
+	}
+	fmt.Println(b, d, es)
+	fmt.Println("---------------------")
+}
+func TestBoard_GetDChainEdges7(t *testing.T) {
+	//长链 全捕获
+	b := NewBoard()
 	err := b.MoveAndCheckout(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 2}, &Edge{1, 4}, &Edge{3, 0}, &Edge{3, 4}, &Edge{3, 2})
 	if err != nil {
 		t.Fatal(err)
@@ -906,172 +947,27 @@ func TestBoard_GetDChainEdges5(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	fmt.Println(c)
-	es, _ := b.GetDChainEdges(1, 1, c, c.Length-1, true)
-	err = b.MoveAndCheckout(es...)
+	d, es, err := b.GetDTreeEdges()
+	fmt.Println(b, d, es)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	err = b.MoveAndCheckout(d...)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
 	if err != nil {
 		return
 	}
-	fmt.Println(b)
+	fmt.Println(b, d, es)
 	fmt.Println("---------------------")
-}
-func TestBoard_IsDCircle(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.Move(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b1.CheckoutEdge(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(1, 1)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_IsDCircle2(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.MoveAndCheckout(&Edge{3, 0}, &Edge{2, 1}, &Edge{2, 3}, &Edge{3, 4}, &Edge{4, 1}, &Edge{5, 0}, &Edge{7, 0}, &Edge{8, 1}, &Edge{8, 3}, &Edge{5, 4}, &Edge{7, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b1)
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(3, 1)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_IsDCircle3(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.MoveAndCheckout(&Edge{5, 2}, &Edge{3, 0}, &Edge{2, 1}, &Edge{2, 3}, &Edge{3, 4}, &Edge{4, 1}, &Edge{5, 0}, &Edge{7, 0}, &Edge{8, 1}, &Edge{8, 3}, &Edge{5, 4}, &Edge{7, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b1)
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(3, 1)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_GetDCircleEdges(t *testing.T) {
-
-	//环 全吃
-	b1 := NewBoard()
-	err := b1.MoveAndCheckout(&Edge{5, 2}, &Edge{3, 0}, &Edge{2, 1}, &Edge{2, 3}, &Edge{3, 4}, &Edge{4, 1}, &Edge{5, 0}, &Edge{7, 0}, &Edge{8, 1}, &Edge{8, 3}, &Edge{5, 4}, &Edge{7, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b1)
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(3, 1)
-
-	es, _ := b1.GetDCircleEdges(3, 1, l-1, false)
-	_ = b1.MoveAndCheckout(es...)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_GetDCircleEdges1(t *testing.T) {
-
-	//环 造双交
-	b1 := NewBoard()
-	err := b1.MoveAndCheckout(&Edge{5, 2}, &Edge{3, 0}, &Edge{2, 1}, &Edge{2, 3}, &Edge{3, 4}, &Edge{4, 1}, &Edge{5, 0}, &Edge{7, 0}, &Edge{8, 1}, &Edge{8, 3}, &Edge{5, 4}, &Edge{7, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b1)
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(3, 1)
-
-	es, _ := b1.GetDCircleEdges(3, 1, l-4, true)
-	_ = b1.MoveAndCheckout(es...)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_GetDCircleEdges2(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.Move(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b1.CheckoutEdge(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(1, 1)
-	es, _ := b1.GetDCircleEdges(1, 1, l-1, false)
-	_ = b1.MoveAndCheckout(es...)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_GetDCircleEdges3(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.Move(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b1.CheckoutEdge(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Println("---------------------")
-	l, _ := b1.IsDCircle(1, 1)
-	es, _ := b1.GetDCircleEdges(1, 1, l-4, true)
-	_ = b1.MoveAndCheckout(es...)
-	fmt.Println(b1, l)
-
-}
-func TestBoard_GetDTreeEdges(t *testing.T) {
-	//环
-	b1 := NewBoard()
-	err := b1.MoveAndCheckout(&Edge{1, 2}, &Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b1)
-	ees, err := b1.GetDTreeEdges()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, es := range ees {
-		b1.MoveAndCheckout(es...)
-		fmt.Println()
-	}
-	fmt.Println(b1)
 }
 func TestBoard_RandomMoveByCheck(t *testing.T) {
 	b := NewBoard()
 	_, _ = b.RandomMoveByCheck()
 	fmt.Println(b)
-}
-func TestBoard_GetEdgesByIdentifyingChains(t *testing.T) {
-
-	for i := 0; i <= 100000; i++ {
-		b := NewBoard()
-		for b.Status() == 0 {
-			//fmt.Println("front:", b)
-			//es, err := b.RandomMoveByCheck()
-			//fmt.Println("end:", b)
-			_, err := b.RandomMoveByCheck()
-
-			if err != nil {
-				t.Fatal(err)
-				return
-			}
-			//fmt.Println(es, "\n----------------------")
-		}
-		//fmt.Println(b.String(), b.Boxes)
-	}
-
 }
 func BenchmarkBoard_GetEdgesByIdentifyingChains(b *testing.B) {
 	bb := NewBoard()
@@ -1093,4 +989,23 @@ func TestCopyBoard(t *testing.T) {
 	fmt.Println(b, b.Boxes)
 	b1 := CopyBoard(b)
 	fmt.Println(b1, b1.Boxes, b, b.Boxes)
+}
+func TestBoard_GetMove(t *testing.T) {
+	for i := 0; i <= 100000; i++ {
+		b := NewBoard()
+		for b.Status() == 0 {
+			//fmt.Println("front:", b)
+			es, err := b.RandomMoveByCheck()
+			fmt.Println(b)
+			//_, err := b.RandomMoveByCheck()
+
+			if err != nil {
+				t.Fatal(err)
+				return
+			}
+			fmt.Println(es, "\n----------------------")
+		}
+		//fmt.Println(b.String(), b.Boxes)
+	}
+
 }
