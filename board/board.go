@@ -374,30 +374,79 @@ func (b *Board) GetMove() (ees [][]*Edge, err error) {
 		if doubleCrossEdges, allEdges, err := nB.GetDTreeEdges(); err != nil {
 			return nil, err
 		} else if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
+
 			//没有死树，只能走链
 			//获取链边
+			minL := 26
+			var minChain *Chain
 			if chains, err := nB.GetChains(); err != nil {
 				return nil, err
 			} else {
 				for _, chain := range chains {
-					//获取其中的一条
-					boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-					for i := 0; i < 4; i++ {
-						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-						if nB.State[edgeX][edgeY] == 0 {
-							tempEdges := []*Edge{}
-							//注意加上死格
-							tempEdges = append(tempEdges, preEdges...)
-							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
-							ees = append(ees, tempEdges)
-							break
-						}
+					if chain.Length < minL {
+						minL = chain.Length
+						minChain = chain
 					}
 
 				}
-				if len(chains) == 0 {
-					//只有死格的特殊情况，一般不会发生
-					ees = append(ees, preEdges)
+			}
+			//没有链看，游戏也没结束，也就是只有死格
+			if minChain == nil {
+				//	fmt.Println(b)
+				ees = append(ees, preEdges)
+				return ees, nil
+			}
+			//如果是二格短链则有两种方式,一种对手能双交，一种不能
+			if minL == 2 {
+				//获取中间的那一条
+				boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
+				betX, betY := 0, 0
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+					if f, err := nB.GetFByBI(nextBX, nextBY); err != nil {
+						return nil, err
+					} else if f == 2 && nB.State[edgeX][edgeY] == 0 {
+						betX, betY = edgeX, edgeY
+						tempEdges := []*Edge{}
+						//fmt.Println("--------------\n", b, edgeX, edgeY)
+						//注意加上死格
+						tempEdges = append(tempEdges, preEdges...)
+						tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+						ees = append(ees, tempEdges)
+						break
+					}
+				}
+				//边上的那条
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					if edgeX == betX && edgeY == betY {
+						continue
+					}
+					if nB.State[edgeX][edgeY] == 0 {
+						tempEdges := []*Edge{}
+						//注意加上死格
+						tempEdges = append(tempEdges, preEdges...)
+						tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+						ees = append(ees, tempEdges)
+						//fmt.Println(b, edgeX, edgeY, "-------------------\n")
+						break
+					}
+				}
+
+			} else {
+				//长链
+				boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					if nB.State[edgeX][edgeY] == 0 {
+						tempEdges := []*Edge{}
+						//注意加上死格
+						tempEdges = append(tempEdges, preEdges...)
+						tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+						ees = append(ees, tempEdges)
+						break
+					}
 				}
 			}
 

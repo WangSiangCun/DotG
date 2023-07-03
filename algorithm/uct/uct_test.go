@@ -57,7 +57,7 @@ func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	for b.Status() == 0 {
 		start := time.Now()
-		es, err := Search(b, 0, 100000, 1)
+		es, err := Search(b, 0, 20000, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
