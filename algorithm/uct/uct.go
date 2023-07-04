@@ -24,6 +24,7 @@ type UCTNode struct {
 const (
 	ucb_C     float64 = 0.4142135623730951
 	ThreadNum int     = 4
+	MaxChild  int     = 25
 )
 
 var (
@@ -55,7 +56,7 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 			}
 		}
 	}
-	if len(n.Children) > 20 {
+	if len(n.Children) >= MaxChild {
 		return nil, err
 	}
 	return

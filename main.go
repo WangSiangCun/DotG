@@ -46,7 +46,7 @@ func PToAI() {
 	playerTurn ^= 3
 	for b.Status() == 0 {
 
-		uct.Move(b, 10000, 20000, playerTurn)
+		uct.Move(b, 30, 30000000, playerTurn)
 
 		if b.Status() != 0 {
 			break
