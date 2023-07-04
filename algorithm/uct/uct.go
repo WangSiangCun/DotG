@@ -36,6 +36,10 @@ const (
 	ucb_C float64 = 0.4142135623730951
 )
 
+var (
+	maxDeep int = 0
+)
+
 func (n *UCTNode) GetUCB() float64 {
 	if n.Visit == 0 {
 		return rand.Float64() + 1.0
@@ -65,6 +69,7 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 	return
 }
 func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err error) {
+	maxDeep = 0
 	root := NewUCTNode(b)
 	startT := time.Now()
 	for i := 0; int(time.Since(startT).Milliseconds()) < timeout || i < iter; i++ { //1:5 2:3 3:1 4:2 5:1 6:1
@@ -87,7 +92,7 @@ func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err e
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Tatal:%d \n", root.Visit)
+	fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
 	return bestChild.LastMove, nil
 }
 func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
@@ -190,7 +195,12 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 
 }
 func BackUp(n *UCTNode, res int, who int) {
+	deep := 1
 	for n != nil {
+		deep++
+		if deep > maxDeep {
+			maxDeep = deep
+		}
 		if n.B.Now == who {
 			n.Win += res
 		} else {
@@ -200,4 +210,28 @@ func BackUp(n *UCTNode, res int, who int) {
 		n.Visit++
 		n = n.Parents
 	}
+}
+func Move(b *board.Board, timeout int, iter, who int) {
+	start := time.Now()
+	es := []*board.Edge{}
+	if edges2F, err := b.Get2FEdge(); err != nil {
+		fmt.Println(err)
+		return
+	} else if len(edges2F) != 0 {
+		es, err = Search(b, timeout, iter, who)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	} else {
+		ess, err := b.GetMove()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		es = ess[0]
+	}
+	b.MoveAndCheckout(es...)
+	fmt.Println(es, b, time.Since(start))
+	fmt.Println("-------------------------")
 }

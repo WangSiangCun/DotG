@@ -854,7 +854,7 @@ func (b *Board) Get2FEdge() (edges []*Edge, err error) {
 	}()*/
 	//获取寻常边
 	for i := 0; i < 11; i++ {
-		for j := 1; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
+		for j := 0; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
 
 			if (i+j)&1 == 1 && b.State[i][j] == 0 {
 				he := Edge{i, j}
