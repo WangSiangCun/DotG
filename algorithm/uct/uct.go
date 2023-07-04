@@ -59,7 +59,9 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 			}
 		}
 	}
-
+	if len(n.Children) > 20 {
+		return nil, err
+	}
 	return
 }
 func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err error) {

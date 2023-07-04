@@ -9,7 +9,7 @@ import (
 
 func main() {
 	mode := 0
-	fmt.Println("输入游戏模式：1机机，2人机,3退出")
+	fmt.Println("输入游戏模式：1机机，2人机,3测试")
 	for {
 		fmt.Scan(&mode)
 		if mode == 1 {
@@ -20,7 +20,7 @@ func main() {
 			for b.Status() == 0 {
 
 				start := time.Now()
-				es, err := uct.Search(b, 20000, 1, 1)
+				es, err := uct.Search(b, 100, 20000, 1)
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -90,7 +90,41 @@ func main() {
 			}
 
 		} else if mode == 3 {
-			break
+			oneSCore, twoScore := 0, 0
+			for i := 0; i < 1000; i++ {
+				b := board.NewBoard()
+				for b.Status() == 0 {
+					start := time.Now()
+					es, err := uct.Search(b, 100, 200000, 1)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					b.MoveAndCheckout(es...)
+					fmt.Println(es, b, time.Since(start))
+					fmt.Println("-------------------------")
+					if b.Status() != 0 {
+						break
+					}
+
+					start = time.Now()
+					es, err = uct.Search(b, 0, 100000, 2)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					b.MoveAndCheckout(es...)
+					fmt.Println(es, b, time.Since(start))
+					fmt.Println("-------------------------")
+				}
+				if b.Status() == 1 {
+					oneSCore++
+				} else {
+					twoScore++
+				}
+				fmt.Printf("S:%d,%d\n", oneSCore, twoScore)
+
+			}
 
 		}
 	}
