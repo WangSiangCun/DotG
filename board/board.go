@@ -354,6 +354,7 @@ func (b *Board) GetFrontMove() (ees [][]*Edge, err error) {
 			}
 			preEdges = append(preEdges, allEdges...)
 		}
+
 		//走每种安全边
 		for _, edge2f := range edges2f {
 			tempEdges := []*Edge{}

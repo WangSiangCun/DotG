@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -20,24 +21,15 @@ type UCTNode struct {
 	LastMove []*board.Edge
 }
 
-func NewUCTNode(b *board.Board) *UCTNode {
-	return &UCTNode{
-		B:        b,
-		Children: []*UCTNode{},
-		Parents:  nil,
-		Visit:    0,
-		Win:      0,
-		TriedMap: map[string]bool{},
-		LastMove: []*board.Edge{},
-	}
-}
-
 const (
-	ucb_C float64 = 0.4142135623730951
+	ucb_C     float64 = 0.4142135623730951
+	ThreadNum int     = 4
 )
 
 var (
 	maxDeep int = 0
+	//rw      sync.RWMutex
+	mutex sync.Mutex
 )
 
 func (n *UCTNode) GetUCB() float64 {
@@ -68,25 +60,67 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 	}
 	return
 }
-func Search(b *board.Board, timeout int, iter, who int) (es []*board.Edge, err error) {
+func NewUCTNode(b *board.Board) *UCTNode {
+	return &UCTNode{
+		B:        b,
+		Children: []*UCTNode{},
+		Parents:  nil,
+		Visit:    0,
+		Win:      0,
+		TriedMap: map[string]bool{},
+		LastMove: []*board.Edge{},
+	}
+}
+func Search(b *board.Board, timeoutSeconds int, iter, who int) (es []*board.Edge, err error) {
+	var (
+		exit = make(chan int, ThreadNum)
+		stop = make(chan int, ThreadNum)
+	)
 	maxDeep = 0
 	root := NewUCTNode(b)
-	startT := time.Now()
-	for i := 0; int(time.Since(startT).Milliseconds()) < timeout || i < iter; i++ { //1:5 2:3 3:1 4:2 5:1 6:1
+	start := time.Now()
+	for i := 0; i < ThreadNum; i++ {
+		go func() error {
+			for len(stop) == 0 {
+				//1:5 2:3 3:1 4:2 5:1 6:1
+				if root.Visit > iter {
+					stop <- 1
+				}
+				nowN := root
+				mutex.Lock()
+				nowN, err = SelectBest(nowN)
+				if err != nil {
+					return err
+				}
+				nB := board.CopyBoard(nowN.B)
+				mutex.Unlock()
 
-		nowN := root
+				res, err := Simulation(nB, who)
+				if err != nil {
+					return err
+				}
 
-		nowN, err = SelectBest(nowN)
-		if err != nil {
-			return nil, err
+				mutex.Lock()
+				BackUp(nowN, res, who)
+				mutex.Unlock()
+
+			}
+			exit <- 1
+			return nil
+		}()
+
+	}
+	go func() {
+		for {
+			if int(time.Since(start).Seconds()) > timeoutSeconds {
+				stop <- 1
+				return
+			}
 		}
-		nB := board.CopyBoard(nowN.B)
-		res, err := Simulation(nB, who)
-		//fmt.Println(nB)
-		if err != nil {
-			return nil, err
-		}
-		BackUp(nowN, res, who)
+	}()
+
+	for i := 0; i < ThreadNum; i++ {
+		<-exit
 	}
 	bestChild, err := GetBestChild(root, true)
 	if err != nil {
@@ -146,7 +180,6 @@ func SelectBest(n *UCTNode) (*UCTNode, error) {
 	if n == nil {
 		return nil, fmt.Errorf("结点不能为空")
 	}
-
 	//如果游戏已经结束
 	if n.B.Status() != 0 {
 		return n, nil
@@ -171,8 +204,10 @@ func SelectBest(n *UCTNode) (*UCTNode, error) {
 		if n, err = Expand(&ees, n); err != nil {
 			return nil, err
 		} else {
+
 			return n, nil
 		}
+
 	}
 }
 func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {

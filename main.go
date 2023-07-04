@@ -4,7 +4,6 @@ import (
 	"dotg/algorithm/uct"
 	"dotg/board"
 	"fmt"
-	"time"
 )
 
 func AIToAI() {
@@ -13,13 +12,16 @@ func AIToAI() {
 		b.RandomMoveByCheck()
 	}
 	for b.Status() == 0 {
-		uct.Move(b, 100, 20000, 1)
+		//uct.Move(b, 100, 20000, 1)
+		uct.Move(b, 10000, 300000, 1)
 
 		if b.Status() != 0 {
 			break
 		}
 		//-----------------------------------------1
-		uct.Move(b, 100, 10000, 1)
+		//uct.Move(b, 100, 10000, 1)
+		uct.Move(b, 10000, 300000, 1)
+
 	}
 }
 func PToAI() {
@@ -44,7 +46,7 @@ func PToAI() {
 	playerTurn ^= 3
 	for b.Status() == 0 {
 
-		uct.Move(b, 20000, 200000, playerTurn)
+		uct.Move(b, 10000, 20000, playerTurn)
 
 		if b.Status() != 0 {
 			break
@@ -67,50 +69,11 @@ func PToAI() {
 func main() {
 	mode := 0
 	fmt.Println("输入游戏模式：1机机，2人机,3测试")
-	for {
-		fmt.Scan(&mode)
-		if mode == 1 {
-			AIToAI()
-		} else if mode == 2 {
-			PToAI()
-		} else if mode == 3 {
-			oneSCore, twoScore := 0, 0
-			for i := 0; i < 1000; i++ {
-				b := board.NewBoard()
-				for b.Status() == 0 {
-					start := time.Now()
-					es, err := uct.Search(b, 100, 20000, 1)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					b.MoveAndCheckout(es...)
-					fmt.Println(es, b, time.Since(start))
-					fmt.Println("-------------------------")
-					if b.Status() != 0 {
-						break
-					}
-
-					start = time.Now()
-					es, err = uct.Search(b, 0, 5000, 2)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					b.MoveAndCheckout(es...)
-					fmt.Println(es, b, time.Since(start))
-					fmt.Println("-------------------------")
-				}
-				if b.Status() == 1 {
-					oneSCore++
-				} else {
-					twoScore++
-				}
-				fmt.Printf("S:%d,%d\n", oneSCore, twoScore)
-
-			}
-
-		}
+	fmt.Scan(&mode)
+	if mode == 1 {
+		AIToAI()
+	} else if mode == 2 {
+		PToAI()
 	}
 
 }
