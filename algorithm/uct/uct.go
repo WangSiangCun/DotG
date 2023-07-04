@@ -232,6 +232,7 @@ func Move(b *board.Board, timeout int, iter, who int) {
 		es = ess[0]
 	}
 	b.MoveAndCheckout(es...)
-	fmt.Println(es, b, time.Since(start))
+	fmt.Println(es)
+	fmt.Println(b, time.Since(start))
 	fmt.Println("-------------------------")
 }
