@@ -14,6 +14,7 @@ type Board struct {
 	Now   int
 	S     [3]int //S[0]占位,方便1，2的下标
 	Boxes []*Box
+	M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
 }
 
 type Chain struct {
@@ -261,6 +262,14 @@ func IsBox(boxX, boxY int) bool {
 		return false
 	}
 }
+func (b *Board) BitMove(i int) {
+	if i > 63 {
+		b.M[0] |= 1 << 63
+		b.M[1] |= 1 << (i - 64)
+	} else {
+		b.M[0] |= 1 << i
+	}
+}
 
 // Move 移动所在边但不会占领
 func (b *Board) Move(edges ...*Edge) error {
@@ -271,6 +280,8 @@ func (b *Board) Move(edges ...*Edge) error {
 			return fmt.Errorf("repeated Move\n" + s)
 
 		}
+		i := edge.X*11 + edge.Y
+		b.BitMove(i)
 		b.State[edge.X][edge.Y] = 1
 	}
 	b.Now ^= 3
@@ -300,6 +311,7 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 					return err
 				}
 				if f == 0 && b.State[boxX][boxY] == 0 {
+					b.BitMove(boxX*11 + boxY)
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
 				}
@@ -1323,17 +1335,14 @@ func (b *Board) RandomMove() (edge *Edge, err error) {
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
 func (b *Board) RandomMoveByCheck() (edge []*Edge, err error) {
 	ees, err := b.GetMove()
-	//fmt.Println(b, ees)
 	if err != nil {
 		return nil, err
-	}
-	if len(ees) == 0 {
-		return nil, fmt.Errorf("RandomMove:未找到边")
 	}
 	randInt := rand.Intn(len(ees))
 	if err = b.MoveAndCheckout(ees[randInt]...); err != nil {
 		return nil, err
 	}
+
 	return ees[randInt], nil
 }
 

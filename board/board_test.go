@@ -31,33 +31,43 @@ func TestBoxToXY(t *testing.T) {
 }
 func TestBoard_Move(t *testing.T) {
 	b := NewBoard()
-	edge, _ := XYZToEdge(0, 0, 0)
-	err := b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
+	k := 0
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if (i+j)&1 == 1 || (i&1 == 1 && j&1 == 1) {
+				b.BitMove(i*11 + j)
+				fmt.Printf("%d %d %d %d,%b %b\n", i, j, i*11+j, k, b.M[1], b.M[0])
+				k++
+			}
+
+		}
+	}
+	fmt.Printf("%b%b\n", b.M[1], b.M[0])
+	b1 := NewBoard()
+	for b1.Status() == 0 {
+		b1.RandomMoveByCheck()
+	}
+	fmt.Printf("%b%b\n", b1.M[1], b1.M[0])
+}
+func TestBoard_BitMove(t *testing.T) {
+	b := NewBoard()
+	fmt.Printf("%b %b\n", b.M[0], b.M[1])
+	b.BitMove(64)
+	fmt.Printf("%b %b\n", b.M[0], b.M[1])
+}
+func BenchmarkBoard_BitMove(b *testing.B) {
+	bb := NewBoard()
+	for i := 0; i < b.N; i++ {
+		bb.BitMove(112)
 
 	}
-	fmt.Println(b.String())
-	edge, _ = XYZToEdge(1, 0, 0)
-	err = b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
+}
+func BenchmarkBoard_BitMove1(b *testing.B) {
+	bb := NewBoard()
+	for i := 0; i < b.N; i++ {
+		bb.State[1][1] = 1
 
 	}
-	fmt.Println(b.String())
-	edge, _ = XYZToEdge(1, 1, 0)
-	err = b.Move(edge)
-	if err != nil {
-		return
-	}
-	fmt.Println(b.String())
-	edge, _ = XYZToEdge(0, 1, 0)
-	err = b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-
-	}
-	fmt.Println(b.String())
 }
 func TestBoard_String(t *testing.T) {
 	b := NewBoard()
@@ -1003,6 +1013,7 @@ func TestBoard_GetMove(t *testing.T) {
 				t.Fatal(err)
 				return
 			}
+			fmt.Printf("%b%b", b.M[0], b.M[1])
 			fmt.Println(es, "\n----------------------")
 		}
 		//fmt.Println(b.String(), b.Boxes)

@@ -13,14 +13,14 @@ func AIToAI() {
 	}
 	for b.Status() == 0 {
 		//uct.Move(b, 100, 20000, 1)
-		uct.Move(b, 10000, 300000, 1)
+		uct.Move(b, 10000, 300, 1, true)
 
 		if b.Status() != 0 {
 			break
 		}
 		//-----------------------------------------1
 		//uct.Move(b, 100, 10000, 1)
-		uct.Move(b, 10000, 300000, 1)
+		uct.Move(b, 10000, 300, 2, true)
 
 	}
 }
@@ -46,7 +46,7 @@ func PToAI() {
 	playerTurn ^= 3
 	for b.Status() == 0 {
 
-		uct.Move(b, 30, 30000000, playerTurn)
+		uct.Move(b, 30, 30000000, playerTurn, true)
 
 		if b.Status() != 0 {
 			break

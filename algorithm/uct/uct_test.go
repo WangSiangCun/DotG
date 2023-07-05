@@ -46,7 +46,7 @@ func TestSelectBest(t *testing.T) {
 	}
 	fmt.Println(b)
 	b.S[1] = 24
-	es, err := Search(b, 100, 100, 1)
+	es, err := Search(b, 100, 100, 1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestSearch(t *testing.T) {
 	for b.Status() == 0 {
 
 		start := time.Now()
-		es, err := Search(b, 0, 20000, 1)
+		es, err := Search(b, 1000000, 20000, 1, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,7 +73,7 @@ func TestSearch(t *testing.T) {
 		}
 
 		start = time.Now()
-		es, err = Search(b, 0, 10000, 2)
+		es, err = Search(b, 10000000, 10000, 2, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,29 +83,13 @@ func TestSearch(t *testing.T) {
 	}
 
 }
+
 func BenchmarkSearch(b *testing.B) {
+	bb := board.NewBoard()
 	for i := 0; i < b.N; i++ {
-		bb := board.NewBoard()
-		for bb.Status() == 0 {
-			es, err := Search(bb, 0, 1, 1)
-			if err != nil {
-				return
-			}
-
-			bb.MoveAndCheckout(es...)
-			//fmt.Println(es, bb)
-			//fmt.Println("-------------------------")
-			if bb.Status() == 0 {
-				break
-			}
-			es, err = Search(bb, 0, 1, 2)
-			if err != nil {
-				return
-			}
-			bb.MoveAndCheckout(es...)
-			//fmt.Println(es, b)
-			//fmt.Println("-------------------------")
-		}
+		Search(bb, 10000, 1, 1, false)
 	}
-
+	//BenchmarkSearch-12           100          79125197 ns/op
+	//BenchmarkSearch-12           100          64363073 ns/op
+	//BenchmarkSearch-12           100          69319926 ns/op
 }

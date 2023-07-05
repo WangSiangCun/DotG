@@ -20,17 +20,31 @@ type UCTNode struct {
 	TriedMap map[string]bool
 	LastMove []*board.Edge
 }
+type HashKey struct {
+	h, v uint32
+	now  uint16
+}
+
+type HashValue struct {
+	visit, win uint32
+	stamp      uint64
+}
 
 const (
-	ucb_C     float64 = 0.4142135623730951
-	ThreadNum int     = 4
-	MaxChild  int     = 25
+	ucb_C      float64 = 0.4142135623730951
+	ThreadNum  int     = 4
+	MaxChild   int     = 25
+	hashBlock  uint    = 23 // prime
+	hashSize   uint    = 13000000 / hashBlock
+	hashClean  uint    = hashSize / 100
+	hashExpire uint64  = uint64(hashSize*hashBlock) / 2 * 3
 )
 
 var (
-	maxDeep int = 0
-	//rw      sync.RWMutex
-	mutex sync.Mutex
+	maxDeep   int = 0
+	rw        sync.RWMutex
+	mutex     sync.Mutex
+	hashTable [hashBlock]map[HashKey]*HashValue
 )
 
 func (n *UCTNode) GetUCB() float64 {
@@ -46,6 +60,7 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 	if n.B.Status() != 0 {
 		return nil, fmt.Errorf("游戏已经结束，没有可拓展边")
 	}
+
 	if ees, err := n.B.GetMove(); err != nil {
 		return nil, err
 	} else {
@@ -72,7 +87,7 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		LastMove: []*board.Edge{},
 	}
 }
-func Search(b *board.Board, timeoutSeconds int, iter, who int) (es []*board.Edge, err error) {
+func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
 	var (
 		exit = make(chan int, ThreadNum)
 		stop = make(chan int, ThreadNum)
@@ -80,25 +95,36 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int) (es []*board.Edge
 	maxDeep = 0
 	root := NewUCTNode(b)
 	start := time.Now()
+	res := 0
 	for i := 0; i < ThreadNum; i++ {
-		go func() error {
+		go func() {
+
 			for len(stop) == 0 {
 				//1:5 2:3 3:1 4:2 5:1 6:1
 				if root.Visit > iter {
 					stop <- 1
 				}
 				nowN := root
-				mutex.Lock()
-				nowN, err = SelectBest(nowN)
-				if err != nil {
-					return err
-				}
-				nB := board.CopyBoard(nowN.B)
-				mutex.Unlock()
+				ees := [][]*board.Edge{}
 
-				res, err := Simulation(nB, who)
-				if err != nil {
-					return err
+				mutex.Lock()
+				if ees, nowN, err = SelectBest(nowN); err != nil {
+					fmt.Println(err)
+					return
+				}
+				//扩展
+				if nowN.B.Status() == 0 {
+					if nowN, err = Expand(&ees, nowN); err != nil {
+						fmt.Println(err)
+						return
+					}
+				}
+
+				mutex.Unlock()
+				nB := board.CopyBoard(b)
+				if res, err = Simulation(nB, who); err != nil {
+					fmt.Println(err)
+					return
 				}
 
 				mutex.Lock()
@@ -107,7 +133,6 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int) (es []*board.Edge
 
 			}
 			exit <- 1
-			return nil
 		}()
 
 	}
@@ -123,14 +148,17 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int) (es []*board.Edge
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
 	}
-	bestChild, err := GetBestChild(root, true)
+	bestChild, err := GetBestChild(root, isV)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+	if isV {
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+	}
+
 	return bestChild.LastMove, nil
 }
-func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
+func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 	//如果游戏已经结束
 	if n.B.Status() != 0 {
 		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
@@ -143,9 +171,8 @@ func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
 	}
 	for _, child := range n.Children {
 		cUCB := child.GetUCB()
-		if isEnd {
+		if isV {
 			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win)/float64(child.Visit), "  v:", child.Visit, "\n ")
-
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
@@ -155,7 +182,7 @@ func GetBestChild(n *UCTNode, isEnd bool) (*UCTNode, error) {
 	if bestN == nil {
 		return nil, fmt.Errorf("未找到最好孩子结点")
 	}
-	if isEnd {
+	if isV {
 		fmt.Printf("Select:\n UCB:%v  w/v: %v Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
 	}
 	return bestN, nil
@@ -167,7 +194,6 @@ func Simulation(b *board.Board, who int) (res int, err error) {
 		if _, err := b.RandomMoveByCheck(); err != nil {
 			return 0, err
 		}
-		//fmt.Println(b)
 	}
 	e := b.Status()
 	if e == who {
@@ -177,41 +203,31 @@ func Simulation(b *board.Board, who int) (res int, err error) {
 	}
 
 }
-func SelectBest(n *UCTNode) (*UCTNode, error) {
-	if n == nil {
-		return nil, fmt.Errorf("结点不能为空")
+func SelectBest(n *UCTNode) ([][]*board.Edge, *UCTNode, error) {
+	for {
+		if n.B.Status() != 0 {
+			return nil, n, nil
+		}
+		//获取还没尝试的边
+		if ees, err := n.GetUnTriedEdges(); err != nil {
+			fmt.Println(err)
+			return nil, nil, err
+		} else if len(ees) == 0 {
+			//获取最好的孩子结点
+			if n, err = GetBestChild(n, false); err != nil {
+				fmt.Println(err)
+				return nil, nil, err
+			}
+		} else {
+			return ees, n, nil
+		}
 	}
-	//如果游戏已经结束
+
+}
+func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	if n.B.Status() != 0 {
 		return n, nil
 	}
-	if ees, err := n.GetUnTriedEdges(); err != nil {
-		return nil, err
-		//没有可以扩展的子结点,选择ucb值最大的子结点继续
-	} else if len(ees) == 0 {
-		//选择一个最好的孩子
-		n, err = GetBestChild(n, false)
-
-		if err != nil {
-			return nil, err
-		}
-		//继续选择
-		n, err = SelectBest(n)
-		if err != nil {
-			return nil, err
-		}
-		return n, err
-	} else {
-		if n, err = Expand(&ees, n); err != nil {
-			return nil, err
-		} else {
-
-			return n, nil
-		}
-
-	}
-}
-func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	//随机选一个扩展
 	l := len(*edges)
 	randInt := rand.Intn(l)
@@ -231,7 +247,7 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 
 }
 func BackUp(n *UCTNode, res int, who int) {
-	deep := 1
+	deep := 0
 	for n != nil {
 		deep++
 		if deep > maxDeep {
@@ -247,14 +263,14 @@ func BackUp(n *UCTNode, res int, who int) {
 		n = n.Parents
 	}
 }
-func Move(b *board.Board, timeout int, iter, who int) {
+func Move(b *board.Board, timeout int, iter, who int, isV bool) {
 	start := time.Now()
 	es := []*board.Edge{}
 	if edges2F, err := b.Get2FEdge(); err != nil {
 		fmt.Println(err)
 		return
 	} else if len(edges2F) != 0 {
-		es, err = Search(b, timeout, iter, who)
+		es, err = Search(b, timeout, iter, who, isV)
 		if err != nil {
 			fmt.Println(err)
 			return
