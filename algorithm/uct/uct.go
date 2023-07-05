@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -21,30 +22,30 @@ type UCTNode struct {
 	LastMove []*board.Edge
 }
 type HashKey struct {
-	h, v uint32
-	now  uint16
+	M   [2]uint64
+	Now int
 }
 
 type HashValue struct {
-	visit, win uint32
-	stamp      uint64
+	Visit, Win int
+	Turn       int
 }
 
 const (
-	ucb_C      float64 = 0.4142135623730951
-	ThreadNum  int     = 4
-	MaxChild   int     = 25
-	hashBlock  uint    = 23 // prime
-	hashSize   uint    = 13000000 / hashBlock
-	hashClean  uint    = hashSize / 100
-	hashExpire uint64  = uint64(hashSize*hashBlock) / 2 * 3
+	ucb_C float64 = 0.4142135623730951
+
+	MaxChild  int  = 25
+	hashBlock uint = 23 // prime
+	hashSize  uint = 13000000 / hashBlock
 )
 
 var (
+	ThreadNum int = 4
 	maxDeep   int = 0
 	rw        sync.RWMutex
 	mutex     sync.Mutex
 	hashTable [hashBlock]map[HashKey]*HashValue
+	rwMutex   [hashBlock]sync.RWMutex
 )
 
 func (n *UCTNode) GetUCB() float64 {
@@ -88,6 +89,10 @@ func NewUCTNode(b *board.Board) *UCTNode {
 	}
 }
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
+	//defer func() {
+	//	count, cleanCount := CleanHashTable(b.Turn)
+	//	fmt.Printf("清理hash表:%d个结点 共计:%d个结点\n", cleanCount, count)
+	//}()
 	var (
 		exit = make(chan int, ThreadNum)
 		stop = make(chan int, ThreadNum)
@@ -98,36 +103,48 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 	res := 0
 	for i := 0; i < ThreadNum; i++ {
 		go func() {
-
 			for len(stop) == 0 {
 				//1:5 2:3 3:1 4:2 5:1 6:1
-				if root.Visit > iter {
+				if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
 					stop <- 1
 				}
 				nowN := root
 				ees := [][]*board.Edge{}
-
 				mutex.Lock()
 				if ees, nowN, err = SelectBest(nowN); err != nil {
 					fmt.Println(err)
 					return
 				}
-				//扩展
 				if nowN.B.Status() == 0 {
+					//扩展
 					if nowN, err = Expand(&ees, nowN); err != nil {
 						fmt.Println(err)
 						return
 					}
 				}
-
 				mutex.Unlock()
-				nB := board.CopyBoard(b)
+
+				//nB仅仅用于模拟
+				nB := board.CopyBoard(nowN.B)
 				if res, err = Simulation(nB, who); err != nil {
 					fmt.Println(err)
 					return
 				}
 
 				mutex.Lock()
+				/*
+					//hashKey := NewHashKey(nowN.B)
+					//if hashV, ok := GetHashValue(hashKey); !ok {
+					//	SetHashValue(hashKey, &HashValue{
+					//		Visit: 1,
+					//		Win:   res,
+					//		Turn:  nowN.B.Turn,
+					//	})
+					//} else {
+					//	hashV.Win += res
+					//	hashV.Visit++
+					//}
+				*/
 				BackUp(nowN, res, who)
 				mutex.Unlock()
 
@@ -136,14 +153,6 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 		}()
 
 	}
-	go func() {
-		for {
-			if int(time.Since(start).Seconds()) > timeoutSeconds {
-				stop <- 1
-				return
-			}
-		}
-	}()
 
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
@@ -183,7 +192,7 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 		return nil, fmt.Errorf("未找到最好孩子结点")
 	}
 	if isV {
-		fmt.Printf("Select:\n UCB:%v  w/v: %v Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
+		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
 	}
 	return bestN, nil
 }
@@ -243,9 +252,15 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	nN.LastMove = es
 	n.TriedMap[fmt.Sprintf("%v", es)] = true
 	n.Children = append(n.Children, nN)
+	//获取hash表中的值
+	//hashKey := &HashKey{M: nN.B.M, Now: nN.B.Now}
+	//if hashV, ok := GetHashValue(hashKey); ok {
+	//	BackUpHash(nN, hashV)
+	//	}
 	return nN, nil
 
 }
+
 func BackUp(n *UCTNode, res int, who int) {
 	deep := 0
 	for n != nil {
@@ -287,4 +302,60 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool) {
 	fmt.Println(es)
 	fmt.Println(b, time.Since(start))
 	fmt.Println("-------------------------")
+}
+func BackUpHash(n *UCTNode, value *HashValue) {
+	for n != nil {
+		fmt.Println(n)
+		n.Visit += value.Visit
+		n.Win += value.Win
+		fmt.Println(n, value.Visit, value.Win)
+		n = n.Parents
+
+	}
+}
+
+//	func NewHashKey(b *board.Board) *HashKey {
+//		return &HashKey{b.M, b.Turn}
+//	}
+func GetHashValue(k *HashKey) (value *HashValue, ok bool) {
+	idx := uint8((k.M[0] ^ k.M[1]) % uint64(hashBlock))
+	rwMutex[idx].RLock()
+	defer rwMutex[idx].RUnlock()
+	if v, ok := hashTable[idx][*k]; !ok {
+		//	fmt.Println(*k, v, ok)
+		return v, false
+	} else {
+		//	fmt.Println(*k, v, ok)
+		return v, true
+	}
+
+}
+func SetHashValue(k *HashKey, value *HashValue) {
+	idx := uint8((k.M[0] ^ k.M[1]) % uint64(hashBlock))
+	rwMutex[idx].Lock()
+	defer rwMutex[idx].Unlock()
+
+	hashTable[idx][*k] = value
+}
+func CleanHashTable(turn int) (count int, cleanCount int) {
+	for i := uint(0); i < hashBlock; i++ {
+		for k, v := range hashTable[i] {
+			if v.Turn <= turn+1 {
+				delete(hashTable[i], k)
+				cleanCount++
+			}
+			count++
+
+		}
+	}
+
+	return count, cleanCount
+}
+
+func init() {
+	rand.Seed(time.Now().Unix())
+	ThreadNum = runtime.NumCPU()
+	for i := uint(0); i < hashBlock; i++ {
+		hashTable[i] = make(map[HashKey]*HashValue, hashSize)
+	}
 }

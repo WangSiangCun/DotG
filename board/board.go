@@ -14,7 +14,8 @@ type Board struct {
 	Now   int
 	S     [3]int //S[0]占位,方便1，2的下标
 	Boxes []*Box
-	M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
+	//M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
+	//Edges []*Edge
 }
 
 type Chain struct {
@@ -51,6 +52,7 @@ var (
 	d3 = [4][2]int{{2, 5}, {3, 5}, {0, 5}, {1, 5}}
 	//左右可组合的
 	d4 = [4][2]int{{1, 4}, {0, 4}, {3, 4}, {2, 4}}
+	d5 = [2]int{-1, 1}
 )
 
 // 输出使用的
@@ -77,10 +79,13 @@ func CopyBoard(b *Board) *Board {
 		}
 
 	}
+
 	nB.Now = b.Now
 	nB.Turn = b.Turn
 	nB.S[1] = b.S[1]
 	nB.S[2] = b.S[2]
+	//	nB.M[0] = b.M[0]
+	//	nB.M[1] = b.M[1]
 	//fmt.Println("front4", nB)
 	return nB
 }
@@ -264,10 +269,9 @@ func IsBox(boxX, boxY int) bool {
 }
 func (b *Board) BitMove(i int) {
 	if i > 63 {
-		b.M[0] |= 1 << 63
-		b.M[1] |= 1 << (i - 64)
+		//b.M[1] |= 1 << (i - 64)
 	} else {
-		b.M[0] |= 1 << i
+		//	b.M[0] |= 1 << i
 	}
 }
 
@@ -280,9 +284,12 @@ func (b *Board) Move(edges ...*Edge) error {
 			return fmt.Errorf("repeated Move\n" + s)
 
 		}
-		i := edge.X*11 + edge.Y
-		b.BitMove(i)
+		//i := edge.X*11 + edge.Y
+		//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
+		//b.BitMove(i)
 		b.State[edge.X][edge.Y] = 1
+		//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
+
 	}
 	b.Now ^= 3
 	b.Turn++
@@ -311,7 +318,9 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 					return err
 				}
 				if f == 0 && b.State[boxX][boxY] == 0 {
-					b.BitMove(boxX*11 + boxY)
+					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
+					//	b.BitMove(boxX*11 + boxY)
+					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
 				}
@@ -1116,10 +1125,9 @@ func (b *Board) GetFByBI(boxI, boxJ int) (int, error) {
 
 // GetFByE 返回边两边的freedom ,默认 左右，上下的顺序，若在边上则对应位置为-1
 func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
-	d := [2]int{-1, 1}
 	if edge.X&1 == 1 {
 		//竖边
-		for _, v := range d {
+		for _, v := range d5 {
 			boxX := edge.X
 			boxY := edge.Y + v
 			if boxY < 11 && boxY >= 0 {
@@ -1130,14 +1138,13 @@ func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
 				boxesF = append(boxesF, f)
 			} else {
 				boxesF = append(boxesF, -1)
-
 			}
 
 		}
 
 	} else {
 		//横边
-		for _, v := range d {
+		for _, v := range d5 {
 			boxX := edge.X + v
 			boxY := edge.Y
 			if boxX < 11 && boxX >= 0 {
@@ -1212,98 +1219,6 @@ func (b *Board) GetOneEdgeByBI(boxI, boxJ int) (edges *Edge, err error) {
 	return edges, nil
 }
 
-// EatAllCBox 吃完所有C型格,不会Turn改变
-func (b *Board) EatAllCBox() error {
-
-	for {
-		flag := false
-		for i := 1; i < 11; i = i + 2 {
-			for j := 1; j < 11; j = j + 2 {
-				f, err := b.GetFByBI(i, j)
-				if err != nil {
-					return err
-				}
-				//自由度为一，占领
-				if f == 1 {
-					flag = true
-					edge, getEdgeBy1FBIErr := b.GetEdgeByBI(i, j)
-					if getEdgeBy1FBIErr != nil {
-						return getEdgeBy1FBIErr
-					}
-					if moveIJERR := b.Move(edge...); moveIJERR != nil {
-						return moveIJERR
-					}
-					//设置占领者颜色与分数
-					if edge[0].X&1 == 1 {
-						//竖
-						if j-2 >= 0 {
-							//[]|*左边   *是当前格子
-							f2, GetFByBIERR := b.GetFByBI(i, j-2)
-							if GetFByBIERR != nil {
-								return GetFByBIERR
-							}
-							if f2 == 0 && b.State[i][j-2] == 0 {
-								b.State[i][j-2] = b.Now
-								b.S[b.Now]++
-							}
-						}
-						if j+2 < 11 {
-							//*|[]右边   *是当前格子
-							f2, GetFByBIERR := b.GetFByBI(i, j+2)
-							if GetFByBIERR != nil {
-								return GetFByBIERR
-							}
-							if f2 == 0 && b.State[i][j+2] == 0 {
-								b.State[i][j+2] = b.Now
-								b.S[b.Now]++
-							}
-						}
-
-					} else {
-						//横
-						if i-2 >= 0 {
-							//[]
-							//——       *是当前格子
-							//*
-							//下边
-							f2, GetFByBIERR := b.GetFByBI(i-2, j)
-							if GetFByBIERR != nil {
-								return GetFByBIERR
-							}
-							if f2 == 0 && b.State[i-2][j] == 0 {
-								b.State[i-2][j] = b.Now
-								b.S[b.Now]++
-							}
-
-						}
-						if i+2 < 11 {
-							// *
-							//——       *是当前格子
-							//[]
-							//下边
-							f2, GetFByBIERR := b.GetFByBI(i+2, j)
-							if GetFByBIERR != nil {
-								return GetFByBIERR
-							}
-							if f2 == 0 && b.State[i+2][j] == 0 {
-								b.State[i+2][j] = b.Now
-								b.S[b.Now]++
-							}
-						}
-					}
-					b.State[i][j] = b.Now
-					b.S[b.Now]++
-				}
-			}
-		}
-		if !flag {
-			break
-		}
-	}
-
-	return nil
-}
-
 // Status 获得游戏状态
 func (b *Board) Status() int {
 	if b.S[1]+b.S[2] < 25 {
@@ -1316,24 +1231,8 @@ func (b *Board) Status() int {
 	}
 }
 
-// RandomMove 随机移动,目前为getAllMoves,不带checkout
-func (b *Board) RandomMove() (edge *Edge, err error) {
-	edges, getAllMovesErr := b.GetAllMoves()
-	if getAllMovesErr != nil {
-		return nil, getAllMovesErr
-	}
-	if len(edges) == 0 {
-		return nil, fmt.Errorf("没有可移动的边")
-	}
-	randInt := rand.Intn(len(edges))
-	if err = b.Move(edges[randInt]); err != nil {
-		return nil, err
-	}
-	return edges[randInt], nil
-}
-
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
-func (b *Board) RandomMoveByCheck() (edge []*Edge, err error) {
+func (b *Board) RandomMoveByCheck() (edge [][]*Edge, err error) {
 	ees, err := b.GetMove()
 	if err != nil {
 		return nil, err
@@ -1343,7 +1242,7 @@ func (b *Board) RandomMoveByCheck() (edge []*Edge, err error) {
 		return nil, err
 	}
 
-	return ees[randInt], nil
+	return ees, nil
 }
 
 // IsDCircle 格子freedom为一时才可调用
