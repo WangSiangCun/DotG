@@ -13,7 +13,6 @@ func TestSimulation(t *testing.T) {
 	}
 
 }
-
 func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	turn := 1
@@ -23,7 +22,6 @@ func TestSearch(t *testing.T) {
 	}
 
 }
-
 func BenchmarkSearch(b *testing.B) {
 	bb := board.NewBoard()
 	for i := 0; i < b.N; i++ {

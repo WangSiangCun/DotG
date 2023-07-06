@@ -678,3 +678,11 @@ func TestBoard_GetMove(t *testing.T) {
 	}
 
 }
+func TestBoard_StringWithColor(t *testing.T) {
+	b := NewBoard()
+	b.MoveAndCheckout(&Edge{1, 2})
+	b.MoveAndCheckout(&Edge{1, 0})
+	b.MoveAndCheckout(&Edge{0, 1})
+	b.MoveAndCheckout(&Edge{2, 1})
+	fmt.Println(b.StringWithColor([]*Edge{}))
+}

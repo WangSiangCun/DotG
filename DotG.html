@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>点格棋</title>
+  <div id="chessboard"></div>
+  <div id="messages"></div>
+  <button onclick="setAITurn(2)">先手</button>
+  <button onclick="setAITurn(1)">后手</button>
+  <button onclick="start()">开始</button>
+  <style>
+    #chessboard {
+      display: grid;
+      grid-template-columns: repeat(11, 40px);
+      /* 设置列数和格子的宽度 */
+      grid-gap: 2px;
+      /* 设置格子之间的间距 */
+    }
+
+    #chessboard div {
+      width: 40px;
+      /* 格子的宽度 */
+      height: 40px;
+      /* 格子的高度 */
+    }
+
+    .dot {
+      background-color: black;
+      /* 设置点的颜色 */
+      border-radius: 50%;
+      /* 将点的形状设为圆形 */
+    }
+
+    .hEdge {
+      background-color: rgb(255, 255, 255);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+      height: 6px;
+    }
+
+    .vEdge {
+      background-color: rgb(255, 255, 255);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+      width: 6px;
+
+    }
+
+    .hEdge_Clicked {
+      background-color: rgb(0, 0, 0);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+    }
+
+    .vEdge_Clicked {
+      background-color: rgb(0, 0, 0);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+
+    }
+
+    .vEdge:hover,
+    .hEdge:hover {
+      background-color: orange;
+      /* 设置鼠标悬停时的背景颜色 */
+    }
+
+    .box {
+      background-color: rgb(255, 255, 255);
+    }
+
+    .box_occupy_1 {
+      background-color: rgb(243, 13, 13);
+    }
+
+    .box_occupy_2 {
+      background-color: rgb(13, 16, 233);
+    }
+  </style>
+  <script>
+    // 定义构造函数
+    function Move(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    let Now = 1;
+    let S1 = 0
+    let S2 = 0
+    let Moves = [];
+    const socket = new WebSocket('ws://localhost:8222/ws'); // 使用实际的服务器地址和端口
+    // 初始化棋盘
+    let board = [
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+      ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+      ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+      ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+      ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+      ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+      ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ];
+    // 获取棋盘元素
+    let chessboard = document.getElementById('chessboard');
+    let messages = document.getElementById('messages');
+    let AITurn = 0
+    // 显示棋盘
+    function displayBoard() {// 遍历棋盘数组，生成格子并添加到棋盘元素中
+      // 遍历棋盘数组，生成格子并添加到棋盘元素中
+      // console.log("display")
+      chessboard.innerHTML = ''; // 清空当前的棋盘显示
+      for (let i = 0; i < board.length; i++) {
+        for (let j = 0; j < board[i].length; j++) {
+          let gridCell = document.createElement('div');
+          if (board[i][j] === '-1') {
+            gridCell.className = 'dot';
+          } else if ((i + j) & 1 == 1 && board[i][j] == 0) {
+            //未移动的边
+            if (j & 1 === 1) {
+              //横边
+              gridCell.className = 'hEdge';
+              gridCell.addEventListener('click', function () {
+                gridCell.classList.remove('hEdge');
+                gridCell.classList.add('hEdge_Clicked');
+                board[i][j] = '1';
+                var move = new Move(i, j);
+                Moves.push(move)
+                upBoard()
+                //ai移动
+                moveServerMoves()
+              })
+            } else {
+              //竖边
+              gridCell.className = 'vEdge';
+              gridCell.addEventListener('click', function () {
+                gridCell.classList.remove('vEdge');
+                gridCell.classList.add('vEdge_Clicked');
+                board[i][j] = '1';
+                var move = new Move(i, j);
+                Moves.push(move)
+                upBoard()
+                //ai移动
+                moveServerMoves()
+              })
+            }
+          } else if ((i + j) & 1 == 1 && board[i][j] == 1) {
+            //已经移动的边
+            if (j & 1 === 1) {//横边
+              gridCell.className = 'hEdge_Clicked';
+            } else {//竖边
+              gridCell.className = 'vEdge_Clicked';
+            }
+          } else if (i & 1 == 1 && j & 1 == 1) {
+
+            //格
+            if (board[i][j] == 0) {
+              gridCell.className = 'box';
+            } else if (board[i][j] == 1) {
+              gridCell.className = 'box_occupy_1';
+            } else if (board[i][j] == 2) {
+              gridCell.className = 'box_occupy_2';
+            }
+
+          }
+          chessboard.appendChild(gridCell);
+        }
+      }
+      messages.innerText = "当前回合：" + Now + "S1: " + S1 + "   S2: " + S2
+      if (status() != 0) {
+        if (AITurn == status) {
+          window.alert("我赢了HAHAHA")
+        } else {
+          window.alert("GG")
+        }
+
+      }
+    }
+    function TurnPlayer() {
+      Now ^= 3
+    }
+    // 更新棋盘
+    function upBoard() {
+      flag = false
+      for (let i = 1; i < board.length; i += 2) {
+        for (let j = 1; j < board[i].length; j += 2) {
+          if (board[i][j] == 0) {
+            //如果没占领的有格子，继续
+            if (checkAndUpdateCellValue(i, j)) {
+              flag = true
+            }
+          }
+
+        }
+      }
+      if (!flag) {
+        TurnPlayer()
+        //socket发送moves
+        //...
+        var str = 'Moves-'
+        for (i = 0; i < Moves.length; i++) {
+          if (i < Moves.length - 1) {
+            str += Moves[i].x + "," + Moves[i].y + "-"
+          } else {
+            str += Moves[i].x + "," + Moves[i].y
+          }
+
+        }
+        SendMessage(str)
+        //清空
+        Moves = []
+      }
+      displayBoard(); // 刷新棋盘显示
+    }
+    // 更新棋盘
+    function reflushBoard() {
+      for (let i = 1; i < board.length; i += 2) {
+        for (let j = 1; j < board[i].length; j += 2) {
+          if (board[i][j] == 0) {
+            //如果没占领的有格子，继续
+            checkAndUpdateCellValue(i, j)
+          }
+
+        }
+      }
+
+      displayBoard(); // 刷新棋盘显示
+    }
+    function moveServerMoves() {
+      GetMessage()
+    }
+    // 检查并更新格子的值
+    function checkAndUpdateCellValue(row, col) {
+      if (
+        board[row - 1][col] == '1' &&
+        board[row + 1][col] == '1' &&
+        board[row][col - 1] == '1' &&
+        board[row][col + 1] == '1'
+      ) {
+        board[row][col] = Now.toString();
+        if (Now == 1) {
+          S1++
+        } else if (Now == 2) {
+          S2++
+        }
+        return true
+      }
+      return false
+    }
+    //开始
+    function start() {
+      if (AITurn == 0) {
+        window.alert("请选择您的先后手后开始")
+        return
+      }
+      displayBoard()
+      console.log("开始")
+      Connect()
+      SendMessage("NewGame," + AITurn)
+      if (AITurn == 1) {
+        moveServerMoves()
+      }
+
+    }
+    //游戏状态
+    function status() {
+      if ((S1 + S2) < 25) {
+        return 0
+      } else if (S1 > S2) {
+        return 1
+      } else {
+        return 2
+      }
+    }
+    //设置ai颜色
+    function setAITurn(t) {
+      AITurn = t
+      if (AITurn == 1) {
+        window.alert("选择了后手")
+      } else {
+        window.alert("选择了先手")
+      }
+
+    }
+    function Connect() {
+      // 监听连接成功事件
+      socket.addEventListener('open', () => {
+      });
+
+    }
+    function Close() {
+      // 监听连接关闭事件
+      socket.addEventListener('close', () => {
+        console.log('WebSocket 连接已关闭');
+      });
+    }
+    function Error() {
+      // 监听连接错误事件
+      socket.addEventListener('error', (error) => {
+        console.error('WebSocket 连接错误:', error);
+      });
+    }
+    function GetMessage() {
+      // 监听接收消息事件
+      socket.addEventListener('message', (event) => {
+        let str = ""
+        str = event.data
+        var ms = str.split("Moves-")
+        var es = ms[1]
+        if (es.includes("-")) {
+          var e = es.split("-")
+          console.log(e)
+          for (i = 0; i < e.length; i++) {
+            xy = e[i].split(",")
+
+            x = xy[0]
+            y = xy[1]
+            board[x][y] = 1
+          }
+        } else {
+          var xy = es.split(",")
+          x = xy[0]
+          y = xy[1]
+          board[x][y] = 1
+        }
+        TurnPlayer()
+        reflushBoard()
+
+      });
+    }
+    function SendMessage(msg) {
+      // 发送消息到服务器
+      console.log(msg)
+      socket.send(msg);
+    }
+  </script>
+
+</html>

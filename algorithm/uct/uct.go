@@ -66,8 +66,8 @@ func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
 		return nil, err
 	} else {
 		for _, es := range ees {
-			s := fmt.Sprintf("%v", es)
-			if !n.TriedMap[s] {
+
+			if !n.TriedMap[fmt.Sprintf("%v", es)] {
 				edges = append(edges, es)
 			}
 		}
@@ -260,7 +260,6 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 	return nN, nil
 
 }
-
 func BackUp(n *UCTNode, res int, who int) {
 	deep := 0
 	for n != nil {
@@ -278,23 +277,23 @@ func BackUp(n *UCTNode, res int, who int) {
 		n = n.Parents
 	}
 }
-func Move(b *board.Board, timeout int, iter, who int, isV bool) {
+func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
 	if edges2F, err := b.Get2FEdge(); err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	} else if len(edges2F) != 0 {
 		es, err = Search(b, timeout, iter, who, isV)
 		if err != nil {
 			fmt.Println(err)
-			return
+			return nil
 		}
 	} else {
 		ess, err := b.GetMove()
 		if err != nil {
 			fmt.Println(err)
-			return
+			return nil
 		}
 		es = ess[0]
 	}
@@ -302,16 +301,7 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool) {
 	fmt.Println(es)
 	fmt.Println(b, time.Since(start))
 	fmt.Println("-------------------------")
-}
-func BackUpHash(n *UCTNode, value *HashValue) {
-	for n != nil {
-		fmt.Println(n)
-		n.Visit += value.Visit
-		n.Win += value.Win
-		fmt.Println(n, value.Visit, value.Win)
-		n = n.Parents
-
-	}
+	return es
 }
 
 //	func NewHashKey(b *board.Board) *HashKey {
@@ -350,6 +340,16 @@ func CleanHashTable(turn int) (count int, cleanCount int) {
 	}
 
 	return count, cleanCount
+}
+func BackUpHash(n *UCTNode, value *HashValue) {
+	for n != nil {
+		fmt.Println(n)
+		n.Visit += value.Visit
+		n.Win += value.Win
+		fmt.Println(n, value.Visit, value.Win)
+		n = n.Parents
+
+	}
 }
 
 func init() {

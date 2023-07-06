@@ -274,6 +274,25 @@ func (b *Board) BitMove(i int) {
 		//	b.M[0] |= 1 << i
 	}
 }
+func (b *Board) GetPlayerMove() {
+	n := 0
+	x, y := 0, 0
+	num := []*Edge{}
+	for {
+		fmt.Println("x")
+		fmt.Scan(&x)
+		fmt.Println("y")
+		fmt.Scan(&y)
+		num = append(num, &Edge{x, y})
+		fmt.Println("------1:继续输入，2：结束--------")
+		fmt.Scan(&n)
+		if n == 2 {
+			break
+		}
+	}
+	b.MoveAndCheckout(&Edge{x, y})
+	fmt.Println(b)
+}
 
 // Move 移动所在边但不会占领
 func (b *Board) Move(edges ...*Edge) error {
@@ -399,9 +418,45 @@ func (b *Board) GetFrontMove() (ees [][]*Edge, err error) {
 						ees = append(ees, tempEdges)
 					}
 				}
+
+				/* else if chain.Length == 2 {
+					//获取中间的那一条
+					boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+					betX, betY := 0, 0
+					for i := 0; i < 4; i++ {
+						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+						nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+						if f, err := nB.GetFByBI(nextBX, nextBY); err != nil {
+						} else if f == 2 && nB.State[edgeX][edgeY] == 0 {
+							betX, betY = edgeX, edgeY
+							tempEdges := []*Edge{}
+							tempEdges = append(tempEdges, preEdges...)
+							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+							ees = append(ees, tempEdges)
+							break
+						}
+					}
+					//边上的那条
+					for i := 0; i < 4; i++ {
+						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+						if edgeX == betX && edgeY == betY {
+							continue
+						}
+						if nB.State[edgeX][edgeY] == 0 {
+							tempEdges := []*Edge{}
+							//注意加上死格
+							tempEdges = append(tempEdges, preEdges...)
+							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+							ees = append(ees, tempEdges)
+							break
+						}
+					}
+
+				}*/
 			}
 		}
 	}
+
 	//没有安全边
 	return
 }
