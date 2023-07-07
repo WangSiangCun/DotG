@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand"
 	"runtime"
+	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -13,14 +15,26 @@ import (
 type UCT struct {
 }
 type UCTNode struct {
-	B        *board.Board
-	Children []*UCTNode
-	Parents  *UCTNode
-	Visit    int
-	Win      int
-	TriedMap map[string]bool
-	LastMove []*board.Edge
+	B           *board.Board
+	Children    []*UCTNode
+	Parents     *UCTNode
+	Visit, Now  int
+	Win         [3]int //0 无，1 ，2
+	UnTriedMove []Untry
+	LastMove    int64
+	rwMutex     sync.RWMutex
 }
+type Untry struct {
+	m   int64
+	val float64
+}
+
+type ByX []Untry
+
+func (self ByX) Len() int           { return len(self) }
+func (self ByX) Swap(i, j int)      { self[i], self[j] = self[j], self[i] }
+func (self ByX) Less(i, j int) bool { return self[i].val > self[j].val }
+
 type HashKey struct {
 	M   [2]uint64
 	Now int
@@ -34,9 +48,10 @@ type HashValue struct {
 const (
 	ucb_C float64 = 0.4142135623730951
 
-	MaxChild  int  = 25
-	hashBlock uint = 23 // prime
-	hashSize  uint = 13000000 / hashBlock
+	MaxChild  int     = 25
+	hashBlock uint    = 23 // prime
+	hashSize  uint    = 13000000 / hashBlock
+	INF       float64 = 1e100
 )
 
 var (
@@ -52,230 +67,7 @@ func (n *UCTNode) GetUCB() float64 {
 	if n.Visit == 0 {
 		return rand.Float64() + 1.0
 	}
-	return float64(n.Win)/float64(n.Visit) + ucb_C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
-}
-func (n *UCTNode) AddChild(child *UCTNode) {
-	n.Children = append(n.Children, child)
-}
-func (n *UCTNode) GetUnTriedEdges() (edges [][]*board.Edge, err error) {
-	if n.B.Status() != 0 {
-		return nil, fmt.Errorf("游戏已经结束，没有可拓展边")
-	}
-
-	if ees, err := n.B.GetMove(); err != nil {
-		return nil, err
-	} else {
-		for _, es := range ees {
-
-			if !n.TriedMap[fmt.Sprintf("%v", es)] {
-				edges = append(edges, es)
-			}
-		}
-	}
-	if len(n.Children) >= MaxChild {
-		return nil, err
-	}
-	return
-}
-func NewUCTNode(b *board.Board) *UCTNode {
-	return &UCTNode{
-		B:        b,
-		Children: []*UCTNode{},
-		Parents:  nil,
-		Visit:    0,
-		Win:      0,
-		TriedMap: map[string]bool{},
-		LastMove: []*board.Edge{},
-	}
-}
-func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
-	//defer func() {
-	//	count, cleanCount := CleanHashTable(b.Turn)
-	//	fmt.Printf("清理hash表:%d个结点 共计:%d个结点\n", cleanCount, count)
-	//}()
-	var (
-		exit = make(chan int, ThreadNum)
-		stop = make(chan int, ThreadNum)
-	)
-	maxDeep = 0
-	root := NewUCTNode(b)
-	start := time.Now()
-	res := 0
-	for i := 0; i < ThreadNum; i++ {
-		go func() {
-			for len(stop) == 0 {
-				//1:5 2:3 3:1 4:2 5:1 6:1
-				if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
-					stop <- 1
-				}
-				nowN := root
-				ees := [][]*board.Edge{}
-				mutex.Lock()
-				if ees, nowN, err = SelectBest(nowN); err != nil {
-					fmt.Println(err)
-					return
-				}
-				if nowN.B.Status() == 0 {
-					//扩展
-					if nowN, err = Expand(&ees, nowN); err != nil {
-						fmt.Println(err)
-						return
-					}
-				}
-				mutex.Unlock()
-
-				//nB仅仅用于模拟
-				nB := board.CopyBoard(nowN.B)
-				if res, err = Simulation(nB, who); err != nil {
-					fmt.Println(err)
-					return
-				}
-
-				mutex.Lock()
-				/*
-					//hashKey := NewHashKey(nowN.B)
-					//if hashV, ok := GetHashValue(hashKey); !ok {
-					//	SetHashValue(hashKey, &HashValue{
-					//		Visit: 1,
-					//		Win:   res,
-					//		Turn:  nowN.B.Turn,
-					//	})
-					//} else {
-					//	hashV.Win += res
-					//	hashV.Visit++
-					//}
-				*/
-				BackUp(nowN, res, who)
-				mutex.Unlock()
-
-			}
-			exit <- 1
-		}()
-
-	}
-
-	for i := 0; i < ThreadNum; i++ {
-		<-exit
-	}
-	bestChild, err := GetBestChild(root, isV)
-	if err != nil {
-		return nil, err
-	}
-	if isV {
-		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
-	}
-
-	return bestChild.LastMove, nil
-}
-func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
-	//如果游戏已经结束
-	if n.B.Status() != 0 {
-		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
-	}
-	var bestN *UCTNode
-	var bestUCB float64
-	bestUCB = math.MinInt32
-	if len(n.Children) == 0 {
-		return nil, fmt.Errorf("GetBestChild:错误，没有孩子结点")
-	}
-	for _, child := range n.Children {
-		cUCB := child.GetUCB()
-		if isV {
-			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win)/float64(child.Visit), "  v:", child.Visit, "\n ")
-		}
-		if cUCB > bestUCB {
-			bestUCB = cUCB
-			bestN = child
-		}
-	}
-	if bestN == nil {
-		return nil, fmt.Errorf("未找到最好孩子结点")
-	}
-	if isV {
-		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
-	}
-	return bestN, nil
-}
-func Simulation(b *board.Board, who int) (res int, err error) {
-
-	for b.Status() == 0 {
-
-		if _, err := b.RandomMoveByCheck(); err != nil {
-			return 0, err
-		}
-	}
-	e := b.Status()
-	if e == who {
-		return 1, err
-	} else {
-		return 0, err
-	}
-
-}
-func SelectBest(n *UCTNode) ([][]*board.Edge, *UCTNode, error) {
-	for {
-		if n.B.Status() != 0 {
-			return nil, n, nil
-		}
-		//获取还没尝试的边
-		if ees, err := n.GetUnTriedEdges(); err != nil {
-			fmt.Println(err)
-			return nil, nil, err
-		} else if len(ees) == 0 {
-			//获取最好的孩子结点
-			if n, err = GetBestChild(n, false); err != nil {
-				fmt.Println(err)
-				return nil, nil, err
-			}
-		} else {
-			return ees, n, nil
-		}
-	}
-
-}
-func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
-	if n.B.Status() != 0 {
-		return n, nil
-	}
-	//随机选一个扩展
-	l := len(*edges)
-	randInt := rand.Intn(l)
-	es := (*edges)[randInt]
-	nB := board.CopyBoard(n.B)
-	if err := nB.MoveAndCheckout(es...); err != nil {
-		return nil, err
-	}
-	//fmt.Println(n.B, nB)
-	//生产新结点
-	nN := NewUCTNode(nB)
-	nN.Parents = n
-	nN.LastMove = es
-	n.TriedMap[fmt.Sprintf("%v", es)] = true
-	n.Children = append(n.Children, nN)
-	//获取hash表中的值
-	//hashKey := &HashKey{M: nN.B.M, Now: nN.B.Now}
-	//if hashV, ok := GetHashValue(hashKey); ok {
-	//	BackUpHash(nN, hashV)
-	//	}
-	return nN, nil
-
-}
-func BackUp(n *UCTNode, res int, who int) {
-	deep := 0
-	for n != nil {
-		deep++
-		if deep > maxDeep {
-			maxDeep = deep
-		}
-		if n.B.Now == who {
-			n.Win += res
-		} else {
-			n.Win += 1 - res
-		}
-
-		n.Visit++
-		n = n.Parents
-	}
+	return float64(n.Win[n.B.Now])/float64(n.Visit) + ucb_C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
 func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
 	start := time.Now()
@@ -303,59 +95,266 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
 	fmt.Println("-------------------------")
 	return es
 }
-
-//	func NewHashKey(b *board.Board) *HashKey {
-//		return &HashKey{b.M, b.Turn}
-//	}
-func GetHashValue(k *HashKey) (value *HashValue, ok bool) {
-	idx := uint8((k.M[0] ^ k.M[1]) % uint64(hashBlock))
-	rwMutex[idx].RLock()
-	defer rwMutex[idx].RUnlock()
-	if v, ok := hashTable[idx][*k]; !ok {
-		//	fmt.Println(*k, v, ok)
-		return v, false
-	} else {
-		//	fmt.Println(*k, v, ok)
-		return v, true
-	}
-
-}
-func SetHashValue(k *HashKey, value *HashValue) {
-	idx := uint8((k.M[0] ^ k.M[1]) % uint64(hashBlock))
-	rwMutex[idx].Lock()
-	defer rwMutex[idx].Unlock()
-
-	hashTable[idx][*k] = value
-}
-func CleanHashTable(turn int) (count int, cleanCount int) {
-	for i := uint(0); i < hashBlock; i++ {
-		for k, v := range hashTable[i] {
-			if v.Turn <= turn+1 {
-				delete(hashTable[i], k)
-				cleanCount++
-			}
-			count++
-
-		}
-	}
-
-	return count, cleanCount
-}
-func BackUpHash(n *UCTNode, value *HashValue) {
-	for n != nil {
-		fmt.Println(n)
-		n.Visit += value.Visit
-		n.Win += value.Win
-		fmt.Println(n, value.Visit, value.Win)
-		n = n.Parents
-
-	}
-}
-
 func init() {
 	rand.Seed(time.Now().Unix())
 	ThreadNum = runtime.NumCPU()
 	for i := uint(0); i < hashBlock; i++ {
 		hashTable[i] = make(map[HashKey]*HashValue, hashSize)
 	}
+}
+func (n *UCTNode) BackUp(res int, who int) {
+	n.rwMutex.Lock()
+	defer n.rwMutex.Unlock()
+	if n.Parents != nil {
+		n.Parents.rwMutex.Lock()
+		defer n.Parents.rwMutex.Unlock()
+	}
+	n.Win[who] += res
+	n.Win[who^3] += 1 - res
+	n.Visit++
+}
+func NewUCTNode(b *board.Board) *UCTNode {
+	return &UCTNode{
+		B:           b,
+		Children:    []*UCTNode{},
+		Parents:     nil,
+		Visit:       0,
+		Win:         [3]int{0, 0, 0},
+		UnTriedMove: ByX{},
+		LastMove:    int64(0),
+	}
+}
+func Simulation(b *board.Board, who int) (res int, err error) {
+	for b.Status() == 0 {
+		if _, err := b.RandomMoveByCheck(); err != nil {
+			return 0, err
+		}
+	}
+	e := b.Status()
+	if e == who {
+		return 1, err
+	} else {
+		return 0, err
+	}
+
+}
+func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
+	//如果游戏已经结束
+	if n.B.Status() != 0 {
+		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
+	}
+	var bestN *UCTNode
+	var bestUCB float64
+	bestUCB = math.MinInt32
+	if len(n.Children) == 0 {
+		return nil, fmt.Errorf("GetBestChild:错误，没有孩子结点")
+	}
+	for _, child := range n.Children {
+		cUCB := child.GetUCB()
+		if isV {
+			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win[child.B.Now])/float64(child.Visit), "  v:", child.Visit, "\n ")
+		}
+		if cUCB > bestUCB {
+			bestUCB = cUCB
+			bestN = child
+		}
+	}
+	if bestN == nil {
+		return nil, fmt.Errorf("未找到最好孩子结点")
+	}
+	if isV {
+		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win[bestN.B.Now])/float64(bestN.Visit), len(n.Children))
+	}
+	return bestN, nil
+}
+func SelectBest(n *UCTNode) (next *UCTNode) {
+	n.rwMutex.RLock()
+	defer n.rwMutex.RUnlock()
+	if n.Parents != nil {
+		n.Parents.rwMutex.RLock()
+		defer n.Parents.rwMutex.RUnlock()
+	}
+	/*	if len(n.Children) == 0 || n.Children[0].Visit == 0 {
+			return nil, nil
+		}
+
+		var (
+			val float64 = INF
+			res         = n.Children[0]
+		)
+		logSum := math.Log(float64(n.Visit))
+		for _, ch := range n.Children {
+			if ch.Visit > 0 {
+				tmp := float64(ch.Win[n.B.Now]) / float64(ch.Visit)
+				vj := float64(ch.Win[n.B.Now])/float64(ch.Visit) - tmp*tmp + math.Sqrt(2*logSum/float64(ch.Visit))
+				tmp += ucb_C * math.Sqrt(math.Min(0.25, vj)*logSum/float64(ch.Visit))
+				if tmp > val {
+					val, res = tmp, ch
+				}
+			}
+		}
+		if len(n.UnTriedMove) > 0 &&
+			val < float64(n.UnTriedMove[0].val)+ucb_C*math.Sqrt(logSum/(float64(n.Visit)/float64(len(n.Children)))*0.25) {
+			return nil, nil
+		}
+		n.B.Move(res.fromMoves...)
+		return res
+	*/
+	for {
+		if n.B.Status() != 0 {
+			return nil
+		}
+		//select三种情况，一是untryMove
+		//获取还没尝试的边
+		if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+			return nil
+		} else if len(n.UnTriedMove) == 0 {
+			//Untried==0 而childreng不为0
+			if n, err := GetBestChild(n, false); err != nil {
+				fmt.Println(err)
+				return nil
+			} else {
+				return n
+			}
+		} else {
+			//还有可扩展
+			return nil
+		}
+
+	}
+
+}
+func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
+	if n.B.Status() != 0 {
+		return n, nil
+	}
+	n.rwMutex.Lock()
+	defer n.rwMutex.Unlock()
+	if n.Parents != nil {
+		n.Parents.rwMutex.Lock()
+		defer n.Parents.rwMutex.Unlock()
+	}
+
+	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+		if ees, err := n.B.GetMove(); err != nil {
+			return nil, err
+		} else {
+			n.UnTriedMove = make([]Untry, len(ees))
+			for i, es := range ees {
+				board.MtoEdges(n.UnTriedMove[i].m)
+				n.UnTriedMove[i].m = board.EdgesToM(es...)
+			}
+		}
+	}
+
+	if len(n.UnTriedMove) == 0 {
+		return nil, fmt.Errorf("错误，没有扩展边")
+	}
+
+	rew := map[string]float64{}
+	if n.Parents != nil {
+		for _, c := range n.Parents.Children {
+			if c.Visit > 0 {
+				//fmt.Println(c.LastMove, strconv.FormatInt(c.LastMove, 10))
+				rew[strconv.FormatInt(c.LastMove, 10)] = float64(c.Win[c.B.Now])/float64(c.Visit) + 1e-10
+			}
+		}
+	}
+	for i, un := range n.UnTriedMove {
+		if rew[strconv.FormatInt(un.m, 10)] > 0 {
+			n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
+		} else {
+			n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
+		}
+	}
+	sort.Sort(ByX(n.UnTriedMove))
+	//随机选一个扩展
+
+	es := board.MtoEdges(n.UnTriedMove[0].m)
+	nB := board.CopyBoard(n.B)
+	if err := nB.MoveAndCheckout(es...); err != nil {
+		return nil, err
+	}
+
+	//生产新结点
+	nN := NewUCTNode(nB)
+	nN.Parents = n
+	nN.LastMove = n.UnTriedMove[0].m
+
+	if n.Children == nil {
+		n.Children = make([]*UCTNode, 0, len(n.UnTriedMove))
+	}
+	n.Children = append(n.Children, nN)
+	if len(n.UnTriedMove) > 1 {
+		n.UnTriedMove = n.UnTriedMove[1:]
+	} else {
+		n.UnTriedMove = nil
+	}
+	return nN, nil
+
+}
+func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
+	//defer func() {
+	//	count, cleanCount := CleanHashTable(b.Turn)
+	//	fmt.Printf("清理hash表:%d个结点 共计:%d个结点\n", cleanCount, count)
+	//}()
+	var (
+		exit = make(chan int, ThreadNum)
+		stop = make(chan int, ThreadNum)
+	)
+	maxDeep = 0
+	root := NewUCTNode(b)
+	start := time.Now()
+	res := 0
+	for i := 0; i < ThreadNum; i++ {
+
+		for len(stop) == 0 {
+			if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
+				stop <- 1
+			}
+			nowN := root
+			ees := [][]*board.Edge{}
+
+			for next := SelectBest(nowN); next != nil; {
+				nowN = next
+				next = SelectBest(nowN)
+			}
+
+			if nowN.B.Status() == 0 {
+				//扩展
+				if nowN, err = Expand(&ees, nowN); err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+
+			//nB仅仅用于模拟
+			nB := board.CopyBoard(nowN.B)
+
+			if res, err = Simulation(nB, who); err != nil {
+				fmt.Println(err)
+				return
+			}
+			for nowN != nil {
+				nowN.BackUp(res, who)
+				nowN = nowN.Parents
+			}
+
+		}
+		exit <- 1
+
+	}
+
+	for i := 0; i < ThreadNum; i++ {
+		<-exit
+	}
+	bestChild, err := GetBestChild(root, isV)
+	if err != nil {
+		return nil, err
+	}
+	if isV {
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+	}
+
+	return board.MtoEdges(bestChild.LastMove), nil
 }

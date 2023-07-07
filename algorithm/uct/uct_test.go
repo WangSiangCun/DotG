@@ -2,7 +2,6 @@ package uct
 
 import (
 	"dotg/board"
-	"fmt"
 	"testing"
 )
 
@@ -30,15 +29,5 @@ func BenchmarkSearch(b *testing.B) {
 	//BenchmarkSearch-12           100          79125197 ns/op
 	//BenchmarkSearch-12           100          64363073 ns/op
 	//BenchmarkSearch-12           100          69319926 ns/op
-}
-func TestSetHashValue(t *testing.T) {
-
-	SetHashValue(&HashKey{M: [2]uint64{1123123, 2312312312}, Now: 1}, &HashValue{
-		Visit: 0,
-		Win:   0,
-		Turn:  0,
-	})
-	v, ok := GetHashValue(&HashKey{M: [2]uint64{1123123, 2312312312}, Now: 1})
-	fmt.Println(v, ok)
-
+	//BenchmarkSearch-12           591           2000801 ns/op
 }

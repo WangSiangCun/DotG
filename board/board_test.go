@@ -10,12 +10,12 @@ func TestNewBoard(t *testing.T) {
 	fmt.Println(b.String(), b.Boxes)
 }
 func TestEdgeToXYZ(t *testing.T) {
-	x, y, z, _ := EdgeToXYZ(&Edge{1, 0})
+	x, y, z := EdgeToXYZ(&Edge{1, 0})
 	fmt.Println(x, y, z)
 	if x != 1 || y != 0 || z != 0 {
 		t.Fatal("错误的转换")
 	}
-	x, y, z, _ = EdgeToXYZ(&Edge{0, 1})
+	x, y, z = EdgeToXYZ(&Edge{0, 1})
 	if x != 0 || y != 0 || z != 0 {
 		t.Fatal("错误的转换")
 	}
@@ -26,13 +26,6 @@ func TestBoxToXY(t *testing.T) {
 	fmt.Println(x, y)
 	if x != 1 || y != 2 {
 		t.Fatal("错误的转换")
-	}
-}
-func BenchmarkBoard_BitMove(b *testing.B) {
-	bb := NewBoard()
-	for i := 0; i < b.N; i++ {
-		bb.BitMove(112)
-
 	}
 }
 func BenchmarkBoard_BitMove1(b *testing.B) {
@@ -74,17 +67,17 @@ func TestBoard_GetAllMoves(t *testing.T) {
 
 func TestBoard_GetFByBI(t *testing.T) {
 	b := NewBoard()
-	edge, _ := XYZToEdge(0, 0, 0)
+	edge := XYZToEdge(0, 0, 0)
 	err := b.Move(edge)
 	if err != nil {
 		t.Fatal(err)
 	}
-	edge, _ = XYZToEdge(1, 0, 0)
+	edge = XYZToEdge(1, 0, 0)
 	err = b.Move(edge)
 	if err != nil {
 		t.Fatal(err)
 	}
-	edge, _ = XYZToEdge(1, 0, 1)
+	edge = XYZToEdge(1, 0, 1)
 	err = b.Move(edge)
 	if err != nil {
 		t.Fatal(err)
@@ -99,12 +92,12 @@ func TestBoard_GetFByBI(t *testing.T) {
 	}
 
 	b1 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
+	edge = XYZToEdge(0, 0, 0)
 	err = b1.Move(edge)
 	if err != nil {
 		t.Fatal(err)
 	}
-	edge, _ = XYZToEdge(1, 0, 1)
+	edge = XYZToEdge(1, 0, 1)
 	err = b1.Move(edge)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +109,7 @@ func TestBoard_GetFByBI(t *testing.T) {
 	}
 
 	b2 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
+	edge = XYZToEdge(0, 0, 0)
 	err = b2.Move(edge)
 	if err != nil {
 		t.Fatal(err)
@@ -154,215 +147,8 @@ func TestEdge_String(t *testing.T) {
 	fmt.Println(&Edge{1, 2})
 }
 func TestXYZToEdge(t *testing.T) {
-	edge, _ := XYZToEdge(1, 2, 1)
+	edge := XYZToEdge(1, 2, 1)
 	fmt.Println(edge)
-}
-func TestBoard_GetBoxType(t *testing.T) {
-
-	b := NewBoard()
-	edge, _ := XYZToEdge(1, 0, 0)
-	err := b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 1)
-	err = b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ := b.GetBoxType(1, 1)
-	b.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b.String())
-	fmt.Println(b.Boxes)
-	if num < 1 && num > 6 {
-		t.Fatal("错误的类型")
-	}
-
-	b1 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
-	err = b1.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(0, 1, 0)
-	err = b1.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b1.GetBoxType(1, 1)
-	b1.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b1.String())
-	fmt.Println(b1.Boxes)
-	if num < 1 && num > 6 {
-		t.Fatal("错误的类型")
-	}
-
-	b2 := NewBoard()
-	edge, _ = XYZToEdge(1, 0, 0)
-	err = b2.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(0, 1, 0)
-	err = b2.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b2.GetBoxType(1, 1)
-	b2.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b2.String())
-	fmt.Println(b2.Boxes)
-	if num < 2 && num > 7 {
-		t.Fatal("错误的类型")
-	}
-
-	b3 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
-	err = b3.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 0)
-	err = b3.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b3.GetBoxType(1, 1)
-	b3.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b3.String())
-	fmt.Println(b3.Boxes)
-	if num < 2 && num > 7 {
-		t.Fatal("错误的类型")
-	}
-
-	b4 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
-	err = b4.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 1)
-	err = b4.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b4.GetBoxType(1, 1)
-	b4.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b4.String())
-	fmt.Println(b4.Boxes)
-	if num < 2 && num > 7 {
-		t.Fatal("错误的类型")
-	}
-
-	b5 := NewBoard()
-	edge, _ = XYZToEdge(0, 1, 0)
-	err = b5.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 1)
-	err = b5.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b5.GetBoxType(1, 1)
-	b5.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b5.String())
-	fmt.Println(b5.Boxes)
-	if num < 2 && num > 7 {
-		t.Fatal("错误的类型")
-	}
-
-	b6 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
-	err = b6.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b6.GetBoxType(1, 1)
-	b6.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b6.String())
-	fmt.Println(b6.Boxes)
-	if num != 1 {
-		t.Fatal("错误的类型")
-	}
-
-	b7 := NewBoard()
-	edge, _ = XYZToEdge(0, 1, 0)
-	err = b7.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b7.GetBoxType(1, 1)
-	b7.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b7.String())
-	fmt.Println(b7.Boxes)
-	if num != 1 {
-		t.Fatal("错误的类型")
-	}
-
-	b8 := NewBoard()
-	edge, _ = XYZToEdge(1, 0, 0)
-	err = b8.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b8.GetBoxType(1, 1)
-	b8.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b8.String())
-	fmt.Println(b8.Boxes)
-	if num != 1 {
-		t.Fatal("错误的类型")
-	}
-	b9 := NewBoard()
-	edge, _ = XYZToEdge(1, 0, 1)
-	err = b9.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b9.GetBoxType(1, 1)
-	b9.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b9.String())
-	fmt.Println(b9.Boxes)
-	if num != 1 {
-		t.Fatal("错误的类型")
-	}
-
-	b10 := NewBoard()
-	edge, _ = XYZToEdge(0, 0, 0)
-	err = b10.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 1)
-	err = b10.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge, _ = XYZToEdge(1, 0, 0)
-	err = b10.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	num, _ = b10.GetBoxType(1, 1)
-	b10.Boxes[0].Type = num
-	fmt.Println(num)
-	fmt.Println(b10.String())
-	fmt.Println(b10.Boxes)
-	if num != 8 {
-		t.Fatal("错误的类型")
-	}
-
 }
 func TestBoard_GetChain(t *testing.T) {
 	b := NewBoard()
@@ -678,11 +464,25 @@ func TestBoard_GetMove(t *testing.T) {
 	}
 
 }
-func TestBoard_StringWithColor(t *testing.T) {
-	b := NewBoard()
-	b.MoveAndCheckout(&Edge{1, 2})
-	b.MoveAndCheckout(&Edge{1, 0})
-	b.MoveAndCheckout(&Edge{0, 1})
-	b.MoveAndCheckout(&Edge{2, 1})
-	fmt.Println(b.StringWithColor([]*Edge{}))
+func TestEdgesToHV(t *testing.T) {
+	h, v := EdgesToHV([]*Edge{&Edge{1, 2}, &Edge{6, 9}}...)
+	fmt.Printf("%b %b\n", h, v)
+}
+func TestEdgesToM(t *testing.T) {
+	//M, _ := EdgesToM([]*Edge{&Edge{0, 1}, &Edge{0, 3}, &Edge{1, 2}, &Edge{6, 9}, &Edge{10, 9}, &Edge{9, 10}}...)
+	//fmt.Printf("%b\n", M)
+	es := []*Edge{}
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if (i+j)&1 == 1 {
+				es = append(es, &Edge{i, j})
+				//M, _ := EdgesToM(&Edge{i, j})
+				//fmt.Printf("%b\n", M)
+			}
+		}
+	}
+	M := EdgesToM(es...)
+	fmt.Printf("%b\n", M)
+	es = MtoEdges(M)
+	fmt.Println(es)
 }

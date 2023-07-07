@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	//"sync"
 )
 
 type Board struct {
@@ -61,9 +62,17 @@ var (
 	s2 = [5]string{"无", "一格短链", "二格短链", "长链", "环"}
 )
 
+// 锁
+var (
+// rw sync.RWMutex
+)
+
 // CopyBoard 拷贝棋盘
 func CopyBoard(b *Board) *Board {
 	//fmt.Println("front3", b)
+	//rw.RLock()         // 加锁
+	//defer rw.RUnlock() // 确保最终释放锁
+
 	nB := NewBoard()
 	t := 0
 	for i := 0; i < 11; i += 1 {
@@ -130,35 +139,77 @@ func NewChain() *Chain {
 }
 
 // XYZToEdge 移动x,y,z所在边但不会占领
-func XYZToEdge(x, y, z int) (edge *Edge, err error) {
+func XYZToEdge(x, y, z int) (edge *Edge) {
 	i, j := 0, 0
 	if x == 0 {
-		//0-1 0-0
-		//1-3 1-2
-		//2-5 2-4
-		//3-7
-		//4-9
 		i = y * 2
 		j = z*2 + 1
 	} else {
 		i = y*2 + 1
 		j = z * 2
 	}
-	return &Edge{i, j}, err
+	return &Edge{i, j}
 }
 
 // EdgeToXYZ 转换Edge到x y z
-func EdgeToXYZ(edge *Edge) (x, y, z int, err error) {
+func EdgeToXYZ(edge *Edge) (x, y, z int) {
 	if edge.X&1 == 0 {
 		x = 0
-		y = (edge.X - 1) / 2
-		z = (edge.Y) / 2
-	} else {
-		x = 1
 		y = (edge.X) / 2
 		z = (edge.Y - 1) / 2
+	} else {
+		x = 1
+		y = (edge.X - 1) / 2
+		z = (edge.Y) / 2
 	}
 	return
+}
+func EdgesToHV(edges ...*Edge) (H, V int) {
+	for _, edge := range edges {
+		x, y, z := EdgeToXYZ(edge)
+		if x == 0 {
+			//横边
+			//	fmt.Printf("%b %b\n", H, V)
+			H |= 1 << (y*5 + z)
+			//	fmt.Printf("%b %b\n", H, V)
+		} else {
+			//	fmt.Printf("%b %b\n", H, V)
+			V |= 1 << (z*5 + y)
+			//		fmt.Printf("%b %b\n", H, V)
+		}
+	}
+	return H, V
+}
+func EdgesToM(edges ...*Edge) (M int64) {
+	for _, edge := range edges {
+		x, y, z := EdgeToXYZ(edge)
+		//fmt.Println(x, y, z)
+		if x == 0 {
+			//横边
+			M |= 1 << (y*5 + z)
+		} else {
+			M |= 1 << (z*5 + y + 30)
+		}
+	}
+	return M
+
+}
+func MtoEdges(M int64) (es []*Edge) {
+	i := 0
+	for M > 0 {
+		if M&1 == 1 {
+			if i < 30 {
+				//fmt.Println(0, i/5, i%5)
+				es = append(es, XYZToEdge(0, i/5, i%5))
+			} else {
+				//fmt.Println(1, (i-30)%5, (i-30)/5)
+				es = append(es, XYZToEdge(1, ((i-30)%5), (i-30)/5))
+			}
+		}
+		M >>= 1
+		i++
+	}
+	return es
 }
 
 // BoxToXY 转换boxX,boxY到x y
@@ -204,6 +255,8 @@ func (c *Chain) String() string {
 
 // String 打印棋盘
 func (b *Board) String() string {
+	//rw.RLock()
+	//defer rw.RUnlock()
 	builder := strings.Builder{}
 	builder.WriteString("\\ ")
 	for i := 0; i < 11; i++ {
@@ -256,7 +309,6 @@ func (b *Board) String() string {
 	}
 	builder.WriteString(fmt.Sprintf("Turn:%d Now:%d S[1]:%d S[2]=%d\n", b.Turn, b.Now, b.S[1], b.S[2]))
 	return builder.String()
-
 }
 
 // IsBox 判断是否为Box
@@ -267,13 +319,16 @@ func IsBox(boxX, boxY int) bool {
 		return false
 	}
 }
-func (b *Board) BitMove(i int) {
-	if i > 63 {
-		//b.M[1] |= 1 << (i - 64)
-	} else {
-		//	b.M[0] |= 1 << i
+
+/*
+	func (b *Board) BitMove(i int) {
+		if i > 63 {
+			//b.M[1] |= 1 << (i - 64)
+		} else {
+			//	b.M[0] |= 1 << i
+		}
 	}
-}
+*/
 func (b *Board) GetPlayerMove() {
 	n := 0
 	x, y := 0, 0
@@ -296,19 +351,14 @@ func (b *Board) GetPlayerMove() {
 
 // Move 移动所在边但不会占领
 func (b *Board) Move(edges ...*Edge) error {
+
 	for _, edge := range edges {
 		if b.State[edge.X][edge.Y] != 0 {
 			s := fmt.Sprintf("%s\n", b.String())
 			s += "X,Y: " + strconv.Itoa(edge.X) + " " + strconv.Itoa(edge.Y) + "\n"
 			return fmt.Errorf("repeated Move\n" + s)
-
 		}
-		//i := edge.X*11 + edge.Y
-		//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
-		//b.BitMove(i)
 		b.State[edge.X][edge.Y] = 1
-		//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
-
 	}
 	b.Now ^= 3
 	b.Turn++
@@ -340,14 +390,17 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
 					//	b.BitMove(boxX*11 + boxY)
 					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
+
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
+
 				}
 				t, getBoxTypeOf2FErr := b.GetBoxType(boxX, boxY)
 				if getBoxTypeOf2FErr != nil {
 					return getBoxTypeOf2FErr
 				}
 				b.Boxes[tempBoxX*5+tempBoxY].Type = t
+
 			}
 		}
 	}
@@ -403,62 +456,68 @@ func (b *Board) GetFrontMove() (ees [][]*Edge, err error) {
 			ees = append(ees, tempEdges)
 		}
 
-		//一格短链的边也可以尝试
-		if chains, err := nB.GetChains(); err != nil {
-			return nil, err
-		} else {
-			for _, chain := range chains {
-				if chain.Length == 1 {
-					if edge, err := nB.GetOneEdgeByBI(chain.Endpoint[0].X, chain.Endpoint[0].Y); err != nil {
-						return nil, err
-					} else {
-						tempEdges := []*Edge{}
-						tempEdges = append(tempEdges, preEdges...)
-						tempEdges = append(tempEdges, edge)
-						ees = append(ees, tempEdges)
-					}
-				}
-
-				/* else if chain.Length == 2 {
-					//获取中间的那一条
-					boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-					betX, betY := 0, 0
-					for i := 0; i < 4; i++ {
-						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-						nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-						if f, err := nB.GetFByBI(nextBX, nextBY); err != nil {
-						} else if f == 2 && nB.State[edgeX][edgeY] == 0 {
-							betX, betY = edgeX, edgeY
-							tempEdges := []*Edge{}
-							tempEdges = append(tempEdges, preEdges...)
-							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
-							ees = append(ees, tempEdges)
-							break
-						}
-					}
-					//边上的那条
-					for i := 0; i < 4; i++ {
-						edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-						if edgeX == betX && edgeY == betY {
-							continue
-						}
-						if nB.State[edgeX][edgeY] == 0 {
-							tempEdges := []*Edge{}
-							//注意加上死格
-							tempEdges = append(tempEdges, preEdges...)
-							tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
-							ees = append(ees, tempEdges)
-							break
-						}
-					}
-
-				}*/
+		if es, err := nB.GetEdgeBy12LChain(); err != nil {
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
 			}
 		}
 	}
 
 	//没有安全边
 	return
+}
+func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
+	//一格短链,二格短链的边也可以尝试
+	if chains, err := b.GetChains(); err != nil {
+		return nil, err
+	} else {
+		for _, chain := range chains {
+			boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+			if chain.Length == 1 {
+				if edge, err := b.GetOneEdgeByBI(boxX, boxY); err != nil {
+					return nil, err
+				} else {
+					es = append(es, edge)
+				}
+
+			} else if chain.Length == 2 {
+				//中间的那条
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+					if f, getFByBIErr := b.GetFByBI(nextBX, nextBY); getFByBIErr != nil {
+						return nil, getFByBIErr
+					} else if f == 2 && b.State[edgeX][edgeY] == 0 {
+						//fmt.Println("2c:", edgeX, edgeY)
+						es = append(es, &Edge{edgeX, edgeY})
+						break
+					}
+				}
+
+				/*				//边上的那条
+								for i := 0; i < 4; i++ {
+									edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+									if edgeX == betX && edgeY == betY {
+										continue
+									}
+									if nB.State[edgeX][edgeY] == 0 {
+										tempEdges := []*Edge{}
+										//注意加上死格
+										tempEdges = append(tempEdges, preEdges...)
+										tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
+										fmt.Println(b, edgeX, edgeY)
+										ees = append(ees, tempEdges)
+										break
+									}
+								}*/
+
+			}
+		}
+	}
+	return es, nil
 }
 
 // GetEndMove 不存在安全边时的走法
@@ -509,6 +568,7 @@ func (b *Board) GetEndMove() (ees []*Edge, err error) {
 		}
 
 	}
+
 	return ees, nil
 
 }
@@ -520,6 +580,7 @@ func (b *Board) GetMove() (ees [][]*Edge, err error) {
 	if ees, err = b.GetFrontMove(); err != nil {
 		return nil, err
 	} else if len(ees) > 0 {
+		//fmt.Println("f", ees)
 		return ees, nil
 	} else {
 		//不存在安全边
@@ -527,6 +588,7 @@ func (b *Board) GetMove() (ees [][]*Edge, err error) {
 			return nil, err
 		} else {
 			ees = append(ees, endMoves)
+			//fmt.Println("b", ees)
 			return ees, nil
 		}
 	}

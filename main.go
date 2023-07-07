@@ -13,14 +13,14 @@ func AIToAI() {
 	//}
 	for b.Status() == 0 {
 		//uct.Move(b, 100, 20000, 1)
-		uct.Move(b, 3, 3000000, 1, true)
+		uct.Move(b, 10, 30000, 1, true)
 
 		if b.Status() != 0 {
 			break
 		}
 		//-----------------------------------------1
 		//uct.Move(b, 100, 10000, 1)
-		uct.Move(b, 3, 100000, 2, true)
+		uct.Move(b, 20, 10000, 2, true)
 
 	}
 }
