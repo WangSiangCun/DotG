@@ -19,7 +19,7 @@ type UCTNode struct {
 	Children    []*UCTNode
 	Parents     *UCTNode
 	Visit, Now  int
-	Win         [3]int //0 无，1 ，2
+	Win         int //0 无，1 ，2
 	UnTriedMove []Untry
 	LastMove    int64
 	rwMutex     sync.RWMutex
@@ -64,10 +64,12 @@ var (
 )
 
 func (n *UCTNode) GetUCB() float64 {
+	n.rwMutex.RLock()
+	defer n.rwMutex.RUnlock()
 	if n.Visit == 0 {
 		return rand.Float64() + 1.0
 	}
-	return float64(n.Win[n.B.Now])/float64(n.Visit) + ucb_C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
+	return float64(n.Win)/float64(n.Visit) + ucb_C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
 func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
 	start := time.Now()
@@ -109,8 +111,11 @@ func (n *UCTNode) BackUp(res int, who int) {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	n.Win[who] += res
-	n.Win[who^3] += 1 - res
+	if n.B.Now == who {
+		n.Win += res
+	} else {
+		n.Win += 1 - res
+	}
 	n.Visit++
 }
 func NewUCTNode(b *board.Board) *UCTNode {
@@ -119,9 +124,10 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		Children:    []*UCTNode{},
 		Parents:     nil,
 		Visit:       0,
-		Win:         [3]int{0, 0, 0},
+		Win:         0,
 		UnTriedMove: ByX{},
 		LastMove:    int64(0),
+		rwMutex:     sync.RWMutex{},
 	}
 }
 func Simulation(b *board.Board, who int) (res int, err error) {
@@ -139,6 +145,12 @@ func Simulation(b *board.Board, who int) (res int, err error) {
 
 }
 func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
+	n.rwMutex.Lock()
+	defer n.rwMutex.Unlock()
+	if n.Parents != nil {
+		n.Parents.rwMutex.Lock()
+		defer n.Parents.rwMutex.Unlock()
+	}
 	//如果游戏已经结束
 	if n.B.Status() != 0 {
 		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
@@ -152,7 +164,7 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 	for _, child := range n.Children {
 		cUCB := child.GetUCB()
 		if isV {
-			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win[child.B.Now])/float64(child.Visit), "  v:", child.Visit, "\n ")
+			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win)/float64(child.Visit), "  v:", child.Visit, "\n ")
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
@@ -163,43 +175,17 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 		return nil, fmt.Errorf("未找到最好孩子结点")
 	}
 	if isV {
-		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win[bestN.B.Now])/float64(bestN.Visit), len(n.Children))
+		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
 	}
 	return bestN, nil
 }
 func SelectBest(n *UCTNode) (next *UCTNode) {
-	n.rwMutex.RLock()
-	defer n.rwMutex.RUnlock()
+	n.rwMutex.Lock()
+	defer n.rwMutex.Unlock()
 	if n.Parents != nil {
-		n.Parents.rwMutex.RLock()
-		defer n.Parents.rwMutex.RUnlock()
+		n.Parents.rwMutex.Lock()
+		defer n.Parents.rwMutex.Unlock()
 	}
-	/*	if len(n.Children) == 0 || n.Children[0].Visit == 0 {
-			return nil, nil
-		}
-
-		var (
-			val float64 = INF
-			res         = n.Children[0]
-		)
-		logSum := math.Log(float64(n.Visit))
-		for _, ch := range n.Children {
-			if ch.Visit > 0 {
-				tmp := float64(ch.Win[n.B.Now]) / float64(ch.Visit)
-				vj := float64(ch.Win[n.B.Now])/float64(ch.Visit) - tmp*tmp + math.Sqrt(2*logSum/float64(ch.Visit))
-				tmp += ucb_C * math.Sqrt(math.Min(0.25, vj)*logSum/float64(ch.Visit))
-				if tmp > val {
-					val, res = tmp, ch
-				}
-			}
-		}
-		if len(n.UnTriedMove) > 0 &&
-			val < float64(n.UnTriedMove[0].val)+ucb_C*math.Sqrt(logSum/(float64(n.Visit)/float64(len(n.Children)))*0.25) {
-			return nil, nil
-		}
-		n.B.Move(res.fromMoves...)
-		return res
-	*/
 	for {
 		if n.B.Status() != 0 {
 			return nil
@@ -224,17 +210,16 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 	}
 
 }
-func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
-	if n.B.Status() != 0 {
-		return n, nil
-	}
+func Expand(n *UCTNode) (*UCTNode, error) {
 	n.rwMutex.Lock()
 	defer n.rwMutex.Unlock()
 	if n.Parents != nil {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-
+	if n.B.Status() != 0 {
+		return n, nil
+	}
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
@@ -256,7 +241,7 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 		for _, c := range n.Parents.Children {
 			if c.Visit > 0 {
 				//fmt.Println(c.LastMove, strconv.FormatInt(c.LastMove, 10))
-				rew[strconv.FormatInt(c.LastMove, 10)] = float64(c.Win[c.B.Now])/float64(c.Visit) + 1e-10
+				rew[strconv.FormatInt(c.LastMove, 10)] = float64(c.Win)/float64(c.Visit) + 1e-10
 			}
 		}
 	}
@@ -294,10 +279,6 @@ func Expand(edges *[][]*board.Edge, n *UCTNode) (*UCTNode, error) {
 
 }
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
-	//defer func() {
-	//	count, cleanCount := CleanHashTable(b.Turn)
-	//	fmt.Printf("清理hash表:%d个结点 共计:%d个结点\n", cleanCount, count)
-	//}()
 	var (
 		exit = make(chan int, ThreadNum)
 		stop = make(chan int, ThreadNum)
@@ -307,42 +288,48 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 	start := time.Now()
 	res := 0
 	for i := 0; i < ThreadNum; i++ {
+		go func() {
 
-		for len(stop) == 0 {
-			if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
-				stop <- 1
-			}
-			nowN := root
-			ees := [][]*board.Edge{}
+			for len(stop) == 0 {
 
-			for next := SelectBest(nowN); next != nil; {
-				nowN = next
-				next = SelectBest(nowN)
-			}
+				if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
+					stop <- 1
+				}
+				nowN := root
+				deep := 0
+				for next := SelectBest(nowN); next != nil; {
+					nowN = next
+					next = SelectBest(nowN)
+					deep++
+				}
 
-			if nowN.B.Status() == 0 {
-				//扩展
-				if nowN, err = Expand(&ees, nowN); err != nil {
+				if deep > maxDeep {
+					maxDeep = deep
+				}
+
+				if nowN.B.Status() == 0 {
+					//扩展
+					if nowN, err = Expand(nowN); err != nil {
+						fmt.Println(err)
+						return
+					}
+				}
+
+				//nB仅仅用于模拟
+				nB := board.CopyBoard(nowN.B)
+
+				if res, err = Simulation(nB, who); err != nil {
 					fmt.Println(err)
 					return
 				}
+
+				for nowN != nil {
+					nowN.BackUp(res, who)
+					nowN = nowN.Parents
+				}
 			}
-
-			//nB仅仅用于模拟
-			nB := board.CopyBoard(nowN.B)
-
-			if res, err = Simulation(nB, who); err != nil {
-				fmt.Println(err)
-				return
-			}
-			for nowN != nil {
-				nowN.BackUp(res, who)
-				nowN = nowN.Parents
-			}
-
-		}
-		exit <- 1
-
+			exit <- 1
+		}()
 	}
 
 	for i := 0; i < ThreadNum; i++ {

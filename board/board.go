@@ -469,6 +469,8 @@ func (b *Board) GetFrontMove() (ees [][]*Edge, err error) {
 	//没有安全边
 	return
 }
+
+// GetEdgeBy12LChain 获得一二长度的链的可下边
 func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
 	//一格短链,二格短链的边也可以尝试
 	if chains, err := b.GetChains(); err != nil {
