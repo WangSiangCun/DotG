@@ -64,8 +64,6 @@ var (
 )
 
 func (n *UCTNode) GetUCB() float64 {
-	n.rwMutex.RLock()
-	defer n.rwMutex.RUnlock()
 	if n.Visit == 0 {
 		return rand.Float64() + 1.0
 	}
@@ -105,12 +103,6 @@ func init() {
 	}
 }
 func (n *UCTNode) BackUp(res int, who int) {
-	n.rwMutex.Lock()
-	defer n.rwMutex.Unlock()
-	if n.Parents != nil {
-		n.Parents.rwMutex.Lock()
-		defer n.Parents.rwMutex.Unlock()
-	}
 	if n.B.Now == who {
 		n.Win += res
 	} else {
@@ -145,12 +137,8 @@ func Simulation(b *board.Board, who int) (res int, err error) {
 
 }
 func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
-	n.rwMutex.Lock()
-	defer n.rwMutex.Unlock()
-	if n.Parents != nil {
-		n.Parents.rwMutex.Lock()
-		defer n.Parents.rwMutex.Unlock()
-	}
+	//n.rwMutex.Lock()
+	//defer n.rwMutex.Unlock()
 	//如果游戏已经结束
 	if n.B.Status() != 0 {
 		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
@@ -161,14 +149,14 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 	if len(n.Children) == 0 {
 		return nil, fmt.Errorf("GetBestChild:错误，没有孩子结点")
 	}
-	for _, child := range n.Children {
-		cUCB := child.GetUCB()
+	for i := 0; i < len(n.Children); i++ {
+		cUCB := n.Children[i].GetUCB()
 		if isV {
-			fmt.Print("move:", child.LastMove, "ucb:", cUCB, "  w/v:", float64(child.Win)/float64(child.Visit), "  v:", child.Visit, "\n ")
+			fmt.Print("move:", n.Children[i].LastMove, "ucb:", cUCB, "  w/v:", float64(n.Children[i].Win)/float64(n.Children[i].Visit), "  v:", n.Children[i].Visit, "\n ")
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
-			bestN = child
+			bestN = n.Children[i]
 		}
 	}
 	if bestN == nil {
@@ -180,46 +168,67 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 	return bestN, nil
 }
 func SelectBest(n *UCTNode) (next *UCTNode) {
-	n.rwMutex.Lock()
-	defer n.rwMutex.Unlock()
+	n.rwMutex.RLock()
+	defer n.rwMutex.RUnlock()
 	if n.Parents != nil {
-		n.Parents.rwMutex.Lock()
-		defer n.Parents.rwMutex.Unlock()
+		n.Parents.rwMutex.RLock()
+		defer n.Parents.rwMutex.RUnlock()
 	}
-	for {
-		if n.B.Status() != 0 {
-			return nil
-		}
-		//select三种情况，一是untryMove
-		//获取还没尝试的边
-		if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-			return nil
-		} else if len(n.UnTriedMove) == 0 {
-			//Untried==0 而childreng不为0
-			if n, err := GetBestChild(n, false); err != nil {
-				fmt.Println(err)
-				return nil
-			} else {
-				return n
+	//游戏结束
+	if n.B.Status() != 0 {
+		return nil
+	}
+	//获取还没尝试的边
+	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+		//Untried==0 children==0还没开始扩展，比如root
+		return nil
+	} else if len(n.UnTriedMove) == 0 {
+		//Untried==0 children!=0 属于扩展完全
+		var bestN *UCTNode
+		var bestUCB float64
+		bestUCB = math.MinInt32
+		for i := 0; i < len(n.Children); i++ {
+			cUCB := n.Children[i].GetUCB()
+			if cUCB > bestUCB {
+				bestUCB = cUCB
+				bestN = n.Children[i]
 			}
-		} else {
-			//还有可扩展
-			return nil
 		}
-
+		return bestN
+	} else {
+		//Untried!=0 children!=0 属于扩展不完全
+		//还有可扩展
+		return nil
 	}
 
 }
 func Expand(n *UCTNode) (*UCTNode, error) {
+	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
+	//这时候就会出现问题
 	n.rwMutex.Lock()
 	defer n.rwMutex.Unlock()
 	if n.Parents != nil {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
+	/*if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
+		//return nil, fmt.Errorf("错误，没有扩展边")
+		var bestN *UCTNode
+		var bestUCB float64
+		bestUCB = math.MinInt32
+		for i := 0; i < len(n.Children); i++ {
+			cUCB := n.Children[i].GetUCB()
+			if cUCB > bestUCB {
+				bestUCB = cUCB
+				bestN = n.Children[i]
+			}
+		}
+		n = bestN
+	}*/
 	if n.B.Status() != 0 {
 		return n, nil
 	}
+
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
@@ -232,16 +241,11 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		}
 	}
 
-	if len(n.UnTriedMove) == 0 {
-		return nil, fmt.Errorf("错误，没有扩展边")
-	}
-
 	rew := map[string]float64{}
 	if n.Parents != nil {
-		for _, c := range n.Parents.Children {
-			if c.Visit > 0 {
-				//fmt.Println(c.LastMove, strconv.FormatInt(c.LastMove, 10))
-				rew[strconv.FormatInt(c.LastMove, 10)] = float64(c.Win)/float64(c.Visit) + 1e-10
+		for i, _ := range n.Parents.Children {
+			if n.Parents.Children[i].Visit > 0 {
+				rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - float64(n.Parents.Children[i].Win)/float64(n.Parents.Children[i].Visit)) + 1e-10
 			}
 		}
 	}
@@ -253,7 +257,6 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		}
 	}
 	sort.Sort(ByX(n.UnTriedMove))
-	//随机选一个扩展
 
 	es := board.MtoEdges(n.UnTriedMove[0].m)
 	nB := board.CopyBoard(n.B)
@@ -297,16 +300,16 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 				}
 				nowN := root
 				deep := 0
+				mutex.Lock()
+				//选择节点，如果该节点没有扩展完全或者游戏结束则返回nil，否则继续选择
 				for next := SelectBest(nowN); next != nil; {
 					nowN = next
 					next = SelectBest(nowN)
 					deep++
 				}
-
 				if deep > maxDeep {
 					maxDeep = deep
 				}
-
 				if nowN.B.Status() == 0 {
 					//扩展
 					if nowN, err = Expand(nowN); err != nil {
@@ -314,7 +317,7 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 						return
 					}
 				}
-
+				mutex.Unlock()
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
 
