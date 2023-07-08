@@ -17,8 +17,7 @@ func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	turn := 1
 	for b.Status() == 0 {
-		es := Move(b, 1, 20000, turn, false)
-		b.MoveAndCheckout(es...)
+		Move(b, 10, 200000, turn, true)
 		turn ^= 3
 	}
 

@@ -385,10 +385,7 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 				return BoxToXYErr
 			}
 			if boxY < 11 && boxY >= 0 && boxX < 11 && boxX >= 0 {
-				f, err := b.GetFByBI(boxX, boxY)
-				if err != nil {
-					return err
-				}
+				f := b.GetFByBI(boxX, boxY)
 				if f == 0 && b.State[boxX][boxY] == 0 {
 					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
 					//	b.BitMove(boxX*11 + boxY)
@@ -493,10 +490,8 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
 				for i := 0; i < 4; i++ {
 					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
 					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-					if f, getFByBIErr := b.GetFByBI(nextBX, nextBY); getFByBIErr != nil {
-						return nil, getFByBIErr
-					} else if f == 2 && b.State[edgeX][edgeY] == 0 {
-						//fmt.Println("2c:", edgeX, edgeY)
+					f := b.GetFByBI(nextBX, nextBY)
+					if f == 2 && b.State[edgeX][edgeY] == 0 {
 						es = append(es, &Edge{edgeX, edgeY})
 						break
 					}
@@ -606,10 +601,7 @@ func (b *Board) GetBoxType(boxX, boxY int) (int, error) {
 	if boxX&1 != 1 || boxY&1 != 1 {
 		return -1, fmt.Errorf("坐标并非格子")
 	}
-	f, err := b.GetFByBI(boxX, boxY)
-	if err != nil {
-		return -1, err
-	}
+	f := b.GetFByBI(boxX, boxY)
 	if f == 4 {
 		return 0, nil
 	} else if f == 3 {
@@ -669,9 +661,8 @@ func (b *Board) GetOneEdgeOfMinChain() (*Edge, error) {
 		for i := 0; i < 4; i++ {
 			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
 			nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-			if f, err := b.GetFByBI(nextBX, nextBY); err != nil {
-				return nil, err
-			} else if f == 2 && b.State[edgeX][edgeY] == 0 {
+			f := b.GetFByBI(nextBX, nextBY)
+			if f == 2 && b.State[edgeX][edgeY] == 0 {
 				return &Edge{edgeX, edgeY}, nil
 			}
 		}
@@ -766,10 +757,7 @@ func (b *Board) Get2FEdge() (edges []*Edge, err error) {
 
 			if (i+j)&1 == 1 && b.State[i][j] == 0 {
 				he := Edge{i, j}
-				boxesF, err := b.GetFByE(&he)
-				if err != nil {
-					return nil, err
-				}
+				boxesF := b.GetFByE(&he)
 				// 两边格子freedom大于3的边
 				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
 
@@ -790,10 +778,7 @@ func (b *Board) GetDGridEdges() (edges []*Edge, err error) {
 	edgesMark := make(map[string]bool)
 	for i := 1; i < 11; i += 2 {
 		for j := 1; j < 11; j += 2 {
-			f, getFByBIErr := b.GetFByBI(i, j)
-			if err != nil {
-				return nil, getFByBIErr
-			}
+			f := b.GetFByBI(i, j)
 			if f == 1 {
 				for k := 0; k < 4; k++ {
 					edgeX := i + d1[k][0]
@@ -813,10 +798,7 @@ func (b *Board) GetDGridEdges() (edges []*Edge, err error) {
 							break
 
 						}
-						f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-						if getFByBIErr2 != nil {
-							return nil, getFByBIErr2
-						}
+						f1 := b.GetFByBI(boxX, boxY)
 						//不为二就是死格
 						if f1 != 2 {
 							edges = append(edges, tE)
@@ -842,10 +824,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 	//获取信息
 	for i := 1; i < 11; i += 2 {
 		for j := 1; j < 11; j += 2 {
-			f, getFByBIErr := b.GetFByBI(i, j)
-			if err != nil {
-				return nil, nil, getFByBIErr
-			}
+			f := b.GetFByBI(i, j)
 			if f == 1 && !boxesMark[(i/2*5+(j/2))] {
 				//先判断是不是死环
 				//如果有两头1，则是死环这一类的，如果没有，则为死链，不用担心已经访问过的会再次访问
@@ -863,10 +842,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 						if b.State[edgeX][edgeY] == 0 {
 							boxX := i + d2[k][0]
 							boxY := j + d2[k][1]
-							f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-							if getFByBIErr2 != nil {
-								return nil, nil, getFByBIErr2
-							}
+							f1 := b.GetFByBI(boxX, boxY)
 
 							if f1 == 2 {
 								chain := NewChain()
@@ -912,10 +888,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 				if b.State[edgeX][edgeY] == 0 {
 					boxX := i + d2[k][0]
 					boxY := j + d2[k][1]
-					f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-					if getFByBIErr2 != nil {
-						return nil, nil, getFByBIErr2
-					}
+					f1 := b.GetFByBI(boxX, boxY)
 					if f1 == 2 {
 						chain := dLs[l].Chain
 						getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
@@ -943,10 +916,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 			if b.State[edgeX][edgeY] == 0 {
 				boxX := i + d2[k][0]
 				boxY := j + d2[k][1]
-				f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-				if getFByBIErr2 != nil {
-					return nil, nil, getFByBIErr2
-				}
+				f1 := b.GetFByBI(boxX, boxY)
 				if f1 == 2 {
 					chain := dLs[len(dLs)-1].Chain
 					getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
@@ -1020,10 +990,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 				if b.State[edgeX][edgeY] == 0 {
 					boxX := i + d2[k][0]
 					boxY := j + d2[k][1]
-					f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-					if getFByBIErr2 != nil {
-						return nil, nil, getFByBIErr2
-					}
+					f1 := b.GetFByBI(boxX, boxY)
 					if f1 == 2 {
 						chain := dLs[l].Chain
 						getChainErr := b.GetChain(boxX, boxY, boxesMark, chain, true)
@@ -1051,10 +1018,7 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, err error) 
 			if b.State[edgeX][edgeY] == 0 {
 				boxX := i + d2[k][0]
 				boxY := j + d2[k][1]
-				f1, getFByBIErr2 := b.GetFByBI(boxX, boxY)
-				if getFByBIErr2 != nil {
-					return nil, nil, getFByBIErr2
-				}
+				f1 := b.GetFByBI(boxX, boxY)
 				if f1 == 2 {
 					chain := dLs[len(dLs)-1].Chain
 					//全捕获
@@ -1108,10 +1072,7 @@ func (b *Board) GetChains() (chains []*Chain, err error) {
 				continue
 			}
 
-			f, getFByBIErr := b.GetFByBI(i, j)
-			if getFByBIErr != nil {
-				return nil, getFByBIErr
-			}
+			f := b.GetFByBI(i, j)
 			if f == 2 {
 				chain := NewChain()
 				b.Boxes[index].Type, err = b.GetBoxType(i, j)
@@ -1214,11 +1175,9 @@ func (b *Board) GetChain(boxX, boxY int, boxesMark map[int]bool, chain *Chain, i
 }
 
 // GetFByBI 通过格子下标获得格子自由度
-func (b *Board) GetFByBI(boxI, boxJ int) (int, error) {
-	if boxI&1 != 1 || boxJ&1 != 1 {
-		return 0, fmt.Errorf("boxIndex Error")
-	} else if boxI <= 0 || boxI >= 10 || boxJ <= 0 || boxJ >= 10 {
-		return -1, nil
+func (b *Board) GetFByBI(boxI, boxJ int) int {
+	if boxI <= 0 || boxI >= 10 || boxJ <= 0 || boxJ >= 10 {
+		return -1
 	}
 	freeDom := 4
 	if b.State[boxI][boxJ] == 0 {
@@ -1238,29 +1197,28 @@ func (b *Board) GetFByBI(boxI, boxJ int) (int, error) {
 		if b.State[boxI][boxJ+1] == 1 {
 			freeDom--
 		}
-		return freeDom, nil
+		return freeDom
 	} else {
-		return 0, nil
+		return 0
 	}
 
 }
 
 // GetFByE 返回边两边的freedom ,默认 左右，上下的顺序，若在边上则对应位置为-1
-func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
+func (b *Board) GetFByE(edge *Edge) (boxesF [2]int) {
+	i := 0
 	if edge.X&1 == 1 {
 		//竖边
 		for _, v := range d5 {
 			boxX := edge.X
 			boxY := edge.Y + v
 			if boxY < 11 && boxY >= 0 {
-				f, err := b.GetFByBI(boxX, boxY)
-				if err != nil {
-					return nil, err
-				}
-				boxesF = append(boxesF, f)
+				f := b.GetFByBI(boxX, boxY)
+				boxesF[i] = f
 			} else {
-				boxesF = append(boxesF, -1)
+				boxesF[i] = -1
 			}
+			i++
 
 		}
 
@@ -1270,15 +1228,12 @@ func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
 			boxX := edge.X + v
 			boxY := edge.Y
 			if boxX < 11 && boxX >= 0 {
-				f, err := b.GetFByBI(boxX, boxY)
-				if err != nil {
-					return nil, err
-				}
-				boxesF = append(boxesF, f)
+				f := b.GetFByBI(boxX, boxY)
+				boxesF[i] = f
 			} else {
-				boxesF = append(boxesF, -1)
-
+				boxesF[i] = -1
 			}
+			i++
 
 		}
 	}
@@ -1287,10 +1242,7 @@ func (b *Board) GetFByE(edge *Edge) (boxesF []int, err error) {
 
 // GetEdgeByBI 通过格子下标获得格子所有边
 func (b *Board) GetEdgeByBI(boxI, boxJ int) (edges []*Edge, err error) {
-	f, GetFByBIErr := b.GetFByBI(boxI, boxJ)
-	if GetFByBIErr != nil {
-		return nil, GetFByBIErr
-	}
+	f := b.GetFByBI(boxI, boxJ)
 	if f != 0 {
 		//上
 		if b.State[boxI-1][boxJ] == 0 {
@@ -1315,10 +1267,7 @@ func (b *Board) GetEdgeByBI(boxI, boxJ int) (edges []*Edge, err error) {
 
 // GetOneEdgeByBI 通过格子下标获得格子所有边
 func (b *Board) GetOneEdgeByBI(boxI, boxJ int) (edges *Edge, err error) {
-	f, GetFByBIErr := b.GetFByBI(boxI, boxJ)
-	if GetFByBIErr != nil {
-		return nil, GetFByBIErr
-	}
+	f := b.GetFByBI(boxI, boxJ)
 	if f != 0 {
 		//上
 		if b.State[boxI-1][boxJ] == 0 {
@@ -1387,9 +1336,8 @@ func (b *Board) dfsIsDCircle(sBoxX, sBoxY, boxX, boxY, len int, edgesMark map[st
 		edge := &Edge{nEX, nEY}
 		if b.State[nEX][nEY] == 0 && !edgesMark[edge.String()] {
 			edgesMark[edge.String()] = true
-			if f, err := b.GetFByBI(nBX, nBY); err != nil {
-				return 0, err
-			} else if f == 1 {
+			f := b.GetFByBI(nBX, nBY)
+			if f == 1 {
 				ans := math.Abs(float64(sBoxX-nBX)) + math.Abs(float64(sBoxY-nBY))
 				boxesMark[(nBX/2)*5+(nBY/2)] = true
 				if ans == 2 {
@@ -1476,10 +1424,7 @@ func (b *Board) GetDChainEdges(box1FX, box1FY int, c *Chain, len int, isDoubleCr
 		for k := 0; k < 4; k++ {
 			edgeX, edgeY := endPointX+d1[k][0], endPointY+d1[k][1]
 			nextBoxX, nextBoxY := endPointX+d2[k][0], endPointY+d2[k][1]
-			f, err := b.GetFByBI(nextBoxX, nextBoxY)
-			if err != nil {
-				return nil, err
-			}
+			f := b.GetFByBI(nextBoxX, nextBoxY)
 			if b.State[edgeX][edgeY] == 0 && f != 2 && f != 1 {
 				edges = append(edges, &Edge{edgeX, edgeY})
 				break
