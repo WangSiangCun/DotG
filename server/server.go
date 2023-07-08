@@ -84,7 +84,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println(es)
 			b.MoveAndCheckout(es...)
-			es = uct.Move(b, TimeOut, 100000, AITurn, true)
+			es = uct.Move(b, TimeOut, 1000000, AITurn, true)
 			sendEdges(conn, es)
 
 		}
