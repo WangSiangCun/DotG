@@ -90,9 +90,12 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
 		es = ess[0]
 	}
 	b.MoveAndCheckout(es...)
-	fmt.Println(es)
-	fmt.Println(b, time.Since(start))
-	fmt.Println("-------------------------")
+	if isV {
+		fmt.Println(es)
+		fmt.Println(b, time.Since(start))
+		fmt.Println("-------------------------")
+	}
+
 	return es
 }
 func init() {
@@ -152,7 +155,7 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 	for i := 0; i < len(n.Children); i++ {
 		cUCB := n.Children[i].GetUCB()
 		if isV {
-			fmt.Print("move:", n.Children[i].LastMove, "ucb:", cUCB, "  w/v:", float64(n.Children[i].Win)/float64(n.Children[i].Visit), "  v:", n.Children[i].Visit, "\n ")
+			fmt.Printf("ucb: %v   w/v: %v v:%v \n", cUCB, float64(n.Children[i].Win)/float64(n.Children[i].Visit), n.Children[i].Visit)
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
@@ -211,9 +214,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	/*if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
-		//return nil, fmt.Errorf("错误，没有扩展边")
-		var bestN *UCTNode
+	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
+		return nil, fmt.Errorf("错误，没有扩展边")
+		/*var bestN *UCTNode
 		var bestUCB float64
 		bestUCB = math.MinInt32
 		for i := 0; i < len(n.Children); i++ {
@@ -223,8 +226,8 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 				bestN = n.Children[i]
 			}
 		}
-		n = bestN
-	}*/
+		n = bestN*/
+	}
 	if n.B.Status() != 0 {
 		return n, nil
 	}
@@ -233,10 +236,11 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
 		} else {
-			n.UnTriedMove = make([]Untry, len(ees))
-			for i, es := range ees {
+			maxL := min(len(ees), MaxChild)
+			n.UnTriedMove = make([]Untry, maxL)
+			for i := 0; i < maxL; i++ {
 				board.MtoEdges(n.UnTriedMove[i].m)
-				n.UnTriedMove[i].m = board.EdgesToM(es...)
+				n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 			}
 		}
 	}
@@ -257,7 +261,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		}
 	}
 	sort.Sort(ByX(n.UnTriedMove))
-
+	if len(n.UnTriedMove) == 0 {
+		return nil, nil
+	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
 	nB := board.CopyBoard(n.B)
 	if err := nB.MoveAndCheckout(es...); err != nil {
@@ -280,6 +286,13 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 	}
 	return nN, nil
 
+}
+func min(a, b int) int {
+	if a > b {
+		return b
+	} else {
+		return a
+	}
 }
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
 	var (

@@ -118,9 +118,12 @@ func NewBoard() *Board {
 		Now:  2,
 		S:    [3]int{0, 0, 0},
 	}
+	t := 0
+	b.Boxes = make([]*Box, 25)
 	for i := 1; i < 11; i += 2 {
 		for j := 1; j < 11; j += 2 {
-			b.Boxes = append(b.Boxes, &Box{i, j, 0})
+			b.Boxes[t] = &Box{i, j, 0}
+			t++
 		}
 
 	}

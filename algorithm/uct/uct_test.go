@@ -16,10 +16,11 @@ func TestSimulation(t *testing.T) {
 func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	turn := 1
-	//	for b.Status() == 0 {
-	Move(b, 1, 2000000, turn, false)
-	turn ^= 3
-	//	}
+	for b.Status() == 0 {
+		es := Move(b, 1, 20000, turn, false)
+		b.MoveAndCheckout(es...)
+		turn ^= 3
+	}
 
 }
 func BenchmarkSearch(b *testing.B) {
