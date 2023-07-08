@@ -67,6 +67,7 @@ var (
 // 后面几回合全走
 const (
 	TurnMark1 int = 7
+	TurnMark2 int = 16
 )
 
 // CopyBoard 拷贝棋盘
@@ -523,7 +524,19 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge, err error) {
 			}
 			return ees, nil
 			//中间几回合只走三和短链+任意四自由度=规定的数字
-		} else if b.Turn >= TurnMark1 {
+		} else if b.Turn >= TurnMark1 && b.Turn < TurnMark2 {
+			if es, err := nB.Get2FEdge(); err != nil {
+				return nil, err
+			} else {
+				for _, e := range es {
+					tempEdges := []*Edge{}
+					tempEdges = append(tempEdges, preEdges...)
+					tempEdges = append(tempEdges, e)
+					ees = append(ees, tempEdges)
+				}
+			}
+			return ees, nil
+		} else if b.Turn >= TurnMark2 {
 			if es, err := nB.GetSafeAndChain12Edge(); err != nil {
 				return nil, err
 			} else {
@@ -651,7 +664,7 @@ func (b *Board) GetEndMove() (ees []*Edge, err error) {
 
 }
 
-// GetMove 获取安全边
+// GetMoveOld GetMove 获取安全边
 func (b *Board) GetMoveOld() (ees [][]*Edge, err error) {
 
 	//获取前期走法边
@@ -888,7 +901,7 @@ func (b *Board) GetSafeNo4Edge() (edges []*Edge, err error) {
 	return
 }
 
-// Get2FEdge 获取移动后不会被捕获的边和一格短链二格短链
+// GetSafeAndChain12Edge 获取移动后不会被捕获的边和一格短链二格短链
 func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, err error) {
 	boxesMark := map[int]bool{}
 	chains := []*Chain{}

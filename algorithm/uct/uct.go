@@ -45,7 +45,7 @@ type HashValue struct {
 }
 
 const (
-	MaxChild  int     = 30
+	MaxChild  int     = 28
 	hashBlock uint    = 23 // prime
 	hashSize  uint    = 13000000 / hashBlock
 	INF       float64 = 1e100
@@ -164,7 +164,7 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 		return nil, fmt.Errorf("未找到最好孩子结点")
 	}
 	if isV {
-		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children))
+		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d UCB_C: %v\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children), ucb_C)
 	}
 	return bestN, nil
 }
@@ -212,7 +212,14 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
+	if len(n.UnTriedMove) == 0 {
+		if len(n.Children) == 0 {
+			fmt.Println(n.B, len(n.Children))
 
+		}
+		fmt.Println("不可扩展，n.UntriedMove为0")
+		return nil, nil
+	}
 	if n.B.Status() != 0 {
 		return n, nil
 	}
@@ -246,8 +253,8 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 			return nil, err
 		} else {
 			//fmt.Println(n.B, ees, "------------------")
-			//maxL := min(len(ees), MaxChild)
-			maxL := min(len(ees), len(ees))
+			maxL := min(len(ees), MaxChild)
+			//maxL := min(len(ees), len(ees))
 			n.UnTriedMove = make([]Untry, maxL)
 			for i := 0; i < maxL; i++ {
 				n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
@@ -296,6 +303,11 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 	*/
 	sort.Sort(ByX(n.UnTriedMove))
 	if len(n.UnTriedMove) == 0 {
+		if len(n.Children) == 0 {
+			fmt.Println(n.B, len(n.Children))
+
+		}
+		fmt.Println("不可扩展，n.UntriedMove为0")
 		return nil, nil
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
