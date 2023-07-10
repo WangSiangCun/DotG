@@ -212,14 +212,7 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	if len(n.UnTriedMove) == 0 {
-		if len(n.Children) == 0 {
-			fmt.Println(n.B, len(n.Children))
 
-		}
-		fmt.Println("不可扩展，n.UntriedMove为0")
-		return nil, nil
-	}
 	if n.B.Status() != 0 {
 		return n, nil
 	}
@@ -247,7 +240,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 			}
 		}
 		n = bestN*/
+
 	}
+
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
@@ -261,7 +256,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 			}
 		}
 	}
-
+	if n.B.Status() != 0 {
+		return n, nil
+	}
 	for i, _ := range n.UnTriedMove {
 		{
 			n.UnTriedMove[i].val = rand.Float64()
@@ -308,7 +305,7 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 
 		}
 		fmt.Println("不可扩展，n.UntriedMove为0")
-		return nil, nil
+		return n, nil
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
 	nB := board.CopyBoard(n.B)
@@ -376,7 +373,6 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 				if deep > maxDeep {
 					maxDeep = deep
 				}
-				t := board.CopyBoard(nowN.B)
 				if nowN.B.Status() == 0 {
 					//扩展
 					if nowN, err = Expand(nowN); err != nil {
@@ -387,7 +383,6 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 				mutex.Unlock()
 				//bug,不知道为什么会为空
 				if nowN == nil {
-					fmt.Println(t)
 					fmt.Println("nowN为空2！")
 					return
 				}
