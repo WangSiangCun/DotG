@@ -35,100 +35,7 @@ func BenchmarkBoard_BitMove1(b *testing.B) {
 
 	}
 }
-func TestBoard_String(t *testing.T) {
-	b := NewBoard()
-	ms, _ := b.GetAllMoves()
-	fmt.Println(len(ms))
-	fmt.Println(b.String())
-	for _, m := range ms {
-		err := b.Move(m)
-		if err != nil {
-			t.Fatal(err)
 
-		}
-	}
-	b.State[1][1] = 1
-	fmt.Println(b.String())
-}
-func TestBoard_GetAllMoves(t *testing.T) {
-	b := NewBoard()
-	ms, _ := b.GetAllMoves()
-	fmt.Println(len(ms))
-	fmt.Println(b.String())
-	for _, m := range ms {
-		err := b.Move(m)
-		if err != nil {
-			t.Fatal(err)
-
-		}
-	}
-	fmt.Println(b.String())
-}
-
-func TestBoard_GetFByBI(t *testing.T) {
-	b := NewBoard()
-	edge := XYZToEdge(0, 0, 0)
-	err := b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge = XYZToEdge(1, 0, 0)
-	err = b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge = XYZToEdge(1, 0, 1)
-	err = b.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, err := b.GetFByBI(1, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b.String(), f)
-	if f != 1 {
-		t.Fatal("自由度1监测错误")
-	}
-
-	b1 := NewBoard()
-	edge = XYZToEdge(0, 0, 0)
-	err = b1.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	edge = XYZToEdge(1, 0, 1)
-	err = b1.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, _ = b1.GetFByBI(1, 1)
-	fmt.Println(b1.String(), f)
-	if f != 2 {
-		t.Fatal("自由度2监测错误")
-	}
-
-	b2 := NewBoard()
-	edge = XYZToEdge(0, 0, 0)
-	err = b2.Move(edge)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, _ = b2.GetFByBI(1, 1)
-	fmt.Println(b2.String(), f)
-	if f != 3 {
-		t.Fatal("自由度3监测错误")
-	}
-
-	b3 := NewBoard()
-	f, _ = b3.GetFByBI(1, 1)
-	fmt.Println(b3.String(), f)
-	if f != 4 {
-		t.Fatal("自由度4监测错误")
-	}
-
-	fmt.Println(b3.String(), f)
-}
 func TestBoard_Status(t *testing.T) {
 	b := NewBoard()
 	fmt.Println(b.Status())
@@ -485,4 +392,31 @@ func TestEdgesToM(t *testing.T) {
 	fmt.Printf("%b\n", M)
 	es = MtoEdges(M)
 	fmt.Println(es)
+}
+func TestBoard_GetSafeNo4Edge(t *testing.T) {
+	b := NewBoard()
+	b.MoveAndCheckout(&Edge{1, 2}, &Edge{3, 2}, &Edge{1, 0}, &Edge{0, 7})
+	es, _ := b.GetSafeNo4Edge()
+	fmt.Println(es, b)
+}
+func TestBoard_GetEdgeBy12LChain(t *testing.T) {
+	//单格
+	b := NewBoard()
+	b.MoveAndCheckout(&Edge{1, 2}, &Edge{3, 2}, &Edge{1, 0}, &Edge{0, 7})
+	es, _ := b.GetEdgeBy12LChain()
+	fmt.Println(es, b)
+	//短链
+	b1 := NewBoard()
+	b1.MoveAndCheckout(&Edge{1, 2}, &Edge{3, 2}, &Edge{1, 0}, &Edge{0, 7}, &Edge{3, 0})
+	es1, _ := b1.GetEdgeBy12LChain()
+	fmt.Println(es1, b1)
+}
+func TestBoard_GetSafeAndChain12Edge(t *testing.T) {
+
+	//单格
+	b := NewBoard()
+	b.MoveAndCheckout(&Edge{1, 2}, &Edge{3, 2}, &Edge{1, 0}, &Edge{0, 7}, &Edge{3, 0})
+	es1, _ := b.GetSafeAndChain12Edge()
+	fmt.Println(es1, b)
+
 }
