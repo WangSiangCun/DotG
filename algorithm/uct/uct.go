@@ -204,7 +204,8 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 
 }
 func Expand(n *UCTNode) (*UCTNode, error) {
-	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
+	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
+	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
 	//这时候就会出现问题
 	n.rwMutex.Lock()
 	defer n.rwMutex.Unlock()
@@ -213,9 +214,6 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 		defer n.Parents.rwMutex.Unlock()
 	}
 
-	if n.B.Status() != 0 {
-		return n, nil
-	}
 	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
 		var bestN *UCTNode
 		var bestUCB float64
@@ -244,6 +242,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 	}
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+		//if n.B.Status() != 0 {
+		//	return n, nil
+		//}
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
 		} else {
@@ -255,10 +256,9 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 				n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 			}
 		}
+
 	}
-	if n.B.Status() != 0 {
-		return n, nil
-	}
+
 	for i, _ := range n.UnTriedMove {
 		{
 			n.UnTriedMove[i].val = rand.Float64()
@@ -300,11 +300,12 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 	*/
 	sort.Sort(ByX(n.UnTriedMove))
 	if len(n.UnTriedMove) == 0 {
+		//并发时会有同步的问题，但是概率较小，为了效率，如果出现情况不再进行同步，直接返回n对n模拟
 		if len(n.Children) == 0 {
 			fmt.Println(n.B, len(n.Children))
 
 		}
-		fmt.Println("不可扩展，n.UntriedMove为0")
+		//fmt.Println("不可扩展，n.UntriedMove为0")
 		return n, nil
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
@@ -359,7 +360,7 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 				if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
 					stop <- 1
 				}
-				mutex.Lock()
+
 				nowN := root
 				//	mutex.Lock()
 				deep := 0
@@ -380,13 +381,13 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 						return
 					}
 				}
-				mutex.Unlock()
+				//mutex.Unlock()
 				//bug,不知道为什么会为空
 				if nowN == nil {
 					fmt.Println("nowN为空2！")
 					return
 				}
-				//mutex.Unlock()
+
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
 				if res, err = Simulation(nB, who); err != nil {
