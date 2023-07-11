@@ -72,7 +72,7 @@ func main() {
 			} else {
 				score2++
 			}
-			fmt.Printf("score1:%v  score2:%v", score1, score2)
+			fmt.Printf("score1:score2   %v:%v \n", score1, score2)
 		}
 
 	}
