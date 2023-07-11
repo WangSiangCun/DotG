@@ -343,6 +343,9 @@ func min(a, b int) int {
 	}
 }
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
+	if b.Turn <= 1 {
+		runtime.GC()
+	}
 	var (
 		exit = make(chan int, ThreadNum)
 		stop = make(chan int, ThreadNum)

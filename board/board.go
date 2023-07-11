@@ -970,6 +970,74 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, err error) {
 	return edges, nil
 }
 
+// GetSafeAndAllChainEdge 获取移动后不会被捕获的边和所有链的边
+func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, err error) {
+	boxesMark := map[int]bool{}
+	chains := []*Chain{}
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
+
+			if (i+j)&1 == 1 && b.State[i][j] == 0 {
+				he := Edge{i, j}
+				boxesF := b.GetFByE(&he)
+				// 两边格子freedom大于3的边
+				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
+					edges = append(edges, &he)
+				}
+			} else if i&1 == 1 && j&1 == 1 {
+				x, y, boxToXYErr := BoxToXY(i, j)
+				if boxToXYErr != nil {
+					return nil, boxToXYErr
+				}
+				index := x*5 + y
+				//如果访问过
+				if boxesMark[index] {
+					continue
+				}
+				f := b.GetFByBI(i, j)
+				if f == 2 {
+					chain := NewChain()
+					b.Boxes[index].Type, err = b.GetBoxType(i, j)
+					if err != nil {
+						return nil, err
+					}
+					if getChainErr := b.GetChain(i, j, boxesMark, chain, true); getChainErr != nil {
+						return nil, getChainErr
+					}
+					chains = append(chains, chain)
+				}
+
+			}
+
+		}
+	}
+
+	for _, chain := range chains {
+		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+		if chain.Length == 2 {
+			//中间的那条
+			for i := 0; i < 4; i++ {
+				edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+				nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+				f := b.GetFByBI(nextBX, nextBY)
+				if f == 2 && b.State[edgeX][edgeY] == 0 {
+					edges = append(edges, &Edge{edgeX, edgeY})
+					break
+				}
+			}
+		} else {
+			if edge, err := b.GetOneEdgeByBI(boxX, boxY); err != nil {
+				return nil, err
+			} else {
+				edges = append(edges, edge)
+			}
+
+		}
+	}
+
+	return edges, nil
+}
+
 // GetDGridEdges 获得死格的边
 func (b *Board) GetDGridEdges() (edges []*Edge, err error) {
 	edgesMark := make(map[string]bool)
