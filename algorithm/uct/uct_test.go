@@ -17,15 +17,19 @@ func TestSearch(t *testing.T) {
 	b := board.NewBoard()
 	turn := 1
 	for b.Status() == 0 {
-		Move(b, 10, 2000000, turn, true)
+		Move(b, 10, 2000000, turn, true, true)
 		turn ^= 3
+		if b.Status() != 0 {
+			break
+		}
+		Move(b, 10, 2000000, turn, true, false)
 	}
 
 }
 func BenchmarkSearch(b *testing.B) {
 	bb := board.NewBoard()
 	for i := 0; i < b.N; i++ {
-		Search(bb, 10000, 1, 1, false)
+		Search(bb, 10000, 1, 1, false, true)
 	}
 	//BenchmarkSearch-12           100          79125197 ns/op
 	//BenchmarkSearch-12           100          64363073 ns/op
@@ -66,7 +70,7 @@ func TestMutex(t *testing.T) {
 				}
 
 				if nowN.B.Status() == 0 {
-					nowN, _ = Expand(nowN)
+					nowN, _ = Expand(nowN, true)
 				}
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)

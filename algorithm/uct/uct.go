@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -67,14 +68,14 @@ func (n *UCTNode) GetUCB() float64 {
 	}
 	return float64(n.Win)/float64(n.Visit) + ucb_C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
-func Move(b *board.Board, timeout int, iter, who int, isV bool) []*board.Edge {
+func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
 	if edges2F, err := b.Get2FEdge(); err != nil {
 		fmt.Println(err)
 		return nil
 	} else if len(edges2F) != 0 {
-		es, err = Search(b, timeout, iter, who, isV)
+		es, err = Search(b, timeout, iter, who, isV, isHeuristic)
 		if err != nil {
 			fmt.Println(err)
 			return nil
@@ -203,7 +204,7 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 	}
 
 }
-func Expand(n *UCTNode) (*UCTNode, error) {
+func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
 	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
 	//这时候就会出现问题
@@ -226,25 +227,10 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 			}
 		}
 		n = bestN
-		//return nil, fmt.Errorf("错误，没有扩展边")
-		/*var bestN *UCTNode
-		var bestUCB float64
-		bestUCB = math.MinInt32
-		for i := 0; i < len(n.Children); i++ {
-			cUCB := n.Children[i].GetUCB()
-			if cUCB > bestUCB {
-				bestUCB = cUCB
-				bestN = n.Children[i]
-			}
-		}
-		n = bestN*/
 
 	}
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-		//if n.B.Status() != 0 {
-		//	return n, nil
-		//}
 		if ees, err := n.B.GetMove(); err != nil {
 			return nil, err
 		} else {
@@ -259,53 +245,35 @@ func Expand(n *UCTNode) (*UCTNode, error) {
 
 	}
 
-	for i, _ := range n.UnTriedMove {
-		{
-			n.UnTriedMove[i].val = rand.Float64()
-			//fmt.Println("Random", n.UnTriedMove[i].val)
-		}
-	}
-	/*
-		if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-			if ees, err := n.B.GetMove(); err != nil {
-				return nil, err
-			} else {
-				//maxL := min(len(ees), MaxChild)
-				maxL := min(len(ees), len(ees))
-				n.UnTriedMove = make([]Untry, maxL)
-				for i := 0; i < maxL; i++ {
-					board.MtoEdges(n.UnTriedMove[i].m)
-					n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-				}
-			}
-		}
+	if isHeuristic {
 		rew := map[string]float64{}
 		if n.Parents != nil {
 			for i, _ := range n.Parents.Children {
 				if n.Parents.Children[i].Visit > 0 {
-					rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - float64(n.Parents.Children[i].Win)/float64(n.Parents.Children[i].Visit)) + 1e-10
+					rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit)) + 1e-10
 				}
 			}
 		}
 		for i, un := range n.UnTriedMove {
 			if rew[strconv.FormatInt(un.m, 10)] > 0 {
 				n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
-				fmt.Println("Rew",n.UnTriedMove[i].val)
+				//fmt.Println("Rew", n.UnTriedMove[i].val)
 			} else {
 				n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
-				fmt.Println("Random",n.UnTriedMove[i].val)
+				//fmt.Println("Random", n.UnTriedMove[i].val)
 			}
-			fmt.Println(n.UnTriedMove[i].val)
+			//fmt.Println(n.UnTriedMove[i].val)
 		}
-	*/
+	} else {
+		for i, _ := range n.UnTriedMove {
+			{
+				n.UnTriedMove[i].val = rand.Float64()
+			}
+		}
+	}
+
 	sort.Sort(ByX(n.UnTriedMove))
 	if len(n.UnTriedMove) == 0 {
-		//并发时会有同步的问题，但是概率较小，为了效率，如果出现情况不再进行同步，直接返回n对n模拟
-		if len(n.Children) == 0 {
-			fmt.Println(n.B, len(n.Children))
-
-		}
-		//fmt.Println("不可扩展，n.UntriedMove为0")
 		return n, nil
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
@@ -342,7 +310,7 @@ func min(a, b int) int {
 		return a
 	}
 }
-func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*board.Edge, err error) {
+func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge, err error) {
 	if b.Turn <= 1 {
 		runtime.GC()
 	}
@@ -379,7 +347,7 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool) (es []*
 				}
 				if nowN.B.Status() == 0 {
 					//扩展
-					if nowN, err = Expand(nowN); err != nil {
+					if nowN, err = Expand(nowN, isHeuristic); err != nil {
 						fmt.Println(err)
 						return
 					}
