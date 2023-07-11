@@ -508,6 +508,7 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge, err error) {
 		}
 
 		if b.Turn == 0 {
+			//0肯定是先手
 			ees = append(ees, []*Edge{&Edge{4, 5}})
 			return ees, nil
 		} //前几回合，只走三自由度
@@ -587,24 +588,6 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
 						break
 					}
 				}
-
-				/*				//边上的那条
-								for i := 0; i < 4; i++ {
-									edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-									if edgeX == betX && edgeY == betY {
-										continue
-									}
-									if nB.State[edgeX][edgeY] == 0 {
-										tempEdges := []*Edge{}
-										//注意加上死格
-										tempEdges = append(tempEdges, preEdges...)
-										tempEdges = append(tempEdges, &Edge{edgeX, edgeY})
-										fmt.Println(b, edgeX, edgeY)
-										ees = append(ees, tempEdges)
-										break
-									}
-								}*/
-
 			}
 		}
 	}
@@ -976,7 +959,6 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, err error) {
 	chains := []*Chain{}
 	for i := 0; i < 11; i++ {
 		for j := 0; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
-
 			if (i+j)&1 == 1 && b.State[i][j] == 0 {
 				he := Edge{i, j}
 				boxesF := b.GetFByE(&he)
@@ -1555,18 +1537,6 @@ func (b *Board) GetOneEdgeByBI(boxI, boxJ int) (edges *Edge, err error) {
 	return edges, nil
 }
 
-// Status 获得游戏状态
-func (b *Board) Status() int {
-	if b.S[1]+b.S[2] < 25 {
-		return 0
-	}
-	if b.S[1] > b.S[2] {
-		return 1
-	} else {
-		return 2
-	}
-}
-
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
 func (b *Board) RandomMoveByCheck() (edge [][]*Edge, err error) {
 	ees, err := b.GetMove()
@@ -1720,4 +1690,16 @@ func (b *Board) dfsChainEdges(sBoxX, sBoxY int, edgesMark map[string]bool, len i
 
 	}
 	return
+}
+
+// Status 获得游戏状态
+func (b *Board) Status() int {
+	if b.S[1]+b.S[2] < 25 {
+		return 0
+	}
+	if b.S[1] > b.S[2] {
+		return 1
+	} else {
+		return 2
+	}
 }

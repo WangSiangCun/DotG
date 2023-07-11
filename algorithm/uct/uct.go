@@ -71,23 +71,29 @@ func (n *UCTNode) GetUCB() float64 {
 func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
-	if edges2F, err := b.Get2FEdge(); err != nil {
-		fmt.Println(err)
-		return nil
-	} else if len(edges2F) != 0 {
-		es, err = Search(b, timeout, iter, who, isV, isHeuristic)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
+	//固定先手开局
+	if b.Turn == 0 {
+		es = append(es, &board.Edge{4, 5})
 	} else {
-		ess, err := b.GetMove()
-		if err != nil {
+		if edges2F, err := b.Get2FEdge(); err != nil {
 			fmt.Println(err)
 			return nil
+		} else if len(edges2F) != 0 {
+			es, err = Search(b, timeout, iter, who, isV, isHeuristic)
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+		} else {
+			ess, err := b.GetMove()
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+			es = ess[0]
 		}
-		es = ess[0]
 	}
+
 	b.MoveAndCheckout(es...)
 	if isV {
 		fmt.Println(es)
@@ -216,6 +222,9 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 	}
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
+		if n.B.Status() != 0 {
+			return n, nil
+		}
 		var bestN *UCTNode
 		var bestUCB float64
 		bestUCB = math.MinInt32

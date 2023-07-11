@@ -48,7 +48,7 @@ func PToAI() {
 func main() {
 	mode := 0
 
-	fmt.Printf("\033[1;40;40m%s\033[0m\n", "输入游戏模式：1机机，2人机,3测试")
+	fmt.Printf("输入游戏模式：1机机，2人机,3测试")
 	fmt.Scan(&mode)
 	if mode == 1 {
 		AIToAI()
@@ -72,7 +72,7 @@ func main() {
 			} else {
 				score2++
 			}
-			fmt.Printf("score1:%v  score2:%v", score1, score2)
+			fmt.Printf("score1:score2   %v:%v \n", score1, score2)
 		}
 
 	}
