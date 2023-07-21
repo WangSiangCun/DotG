@@ -35,20 +35,9 @@ func BenchmarkBoard_BitMove1(b *testing.B) {
 
 	}
 }
-
 func TestBoard_Status(t *testing.T) {
 	b := NewBoard()
 	fmt.Println(b.Status())
-}
-func TestBoard_GetEdgeByBI(t *testing.T) {
-	b := NewBoard()
-	err := b.Move(&Edge{1, 0})
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	edges, _ := b.GetEdgeByBI(1, 1)
-	fmt.Println(edges)
 }
 func TestEdge_String(t *testing.T) {
 	fmt.Println(&Edge{1, 2})
@@ -56,63 +45,6 @@ func TestEdge_String(t *testing.T) {
 func TestXYZToEdge(t *testing.T) {
 	edge := XYZToEdge(1, 2, 1)
 	fmt.Println(edge)
-}
-func TestBoard_GetChain(t *testing.T) {
-	b := NewBoard()
-	err := b.Move(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b.CheckoutEdge(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b.String())
-	mmap := map[int]bool{}
-	c := NewChain()
-	err = b.GetChain(1, 1, mmap, c, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(c.String(), b.String())
-
-	b1 := NewBoard()
-	err = b1.Move(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b1.CheckoutEdge(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{4, 3}, &Edge{3, 4})
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	fmt.Println(b1.String())
-	mmap1 := map[int]bool{}
-	c1 := NewChain()
-	err = b1.GetChain(1, 1, mmap1, c1, true)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	fmt.Println(c1.String(), b1.String())
-
-	b2 := NewBoard()
-	err = b2.Move(&Edge{1, 0}, &Edge{1, 2}, &Edge{3, 0}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b2.CheckoutEdge(&Edge{1, 0}, &Edge{1, 2}, &Edge{3, 0}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b2.String())
-	mmap2 := map[int]bool{}
-	c2 := NewChain()
-	err = b2.GetChain(1, 1, mmap2, c2, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(c2.String(), b2.String())
 }
 func TestBoard_GetChain1(t *testing.T) {
 	b := NewBoard()
@@ -149,83 +81,6 @@ func TestBoard_GetChain2(t *testing.T) {
 	c.CheckChainType()
 	fmt.Println(c.String(), b.String())
 
-}
-
-func TestBoard_GetDChainEdges(t *testing.T) {
-	//长链 双交
-	b := NewBoard()
-	err := b.Move(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b.CheckoutEdge(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := NewChain()
-	boxMark := map[int]bool{}
-	err = b.GetChain(1, 1, boxMark, c, true)
-	if err != nil {
-		return
-	}
-	fmt.Println(c)
-	es, _ := b.GetDChainEdges(3, 1, c, c.Length-2, true)
-	err = b.MoveAndCheckout(es...)
-	if err != nil {
-		return
-	}
-	fmt.Println(b)
-	fmt.Println("---------------------")
-}
-func TestBoard_GetDChainEdges2(t *testing.T) {
-	//长链 全捕获
-	b := NewBoard()
-	err := b.Move(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b.CheckoutEdge(&Edge{0, 1}, &Edge{1, 0}, &Edge{0, 3}, &Edge{1, 4}, &Edge{3, 0}, &Edge{4, 1}, &Edge{3, 2})
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := NewChain()
-	boxMark := map[int]bool{}
-	err = b.GetChain(1, 1, boxMark, c, true)
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	fmt.Println(c)
-	es, _ := b.GetDChainEdges(3, 1, c, c.Length-1, true)
-	err = b.MoveAndCheckout(es...)
-	if err != nil {
-		return
-	}
-	fmt.Println(b)
-	fmt.Println("---------------------")
-}
-func TestBoard_GetDChainEdges3(t *testing.T) {
-	//死短链 双交
-	b := NewBoard()
-	err := b.MoveAndCheckout(&Edge{0, 1}, &Edge{1, 0}, &Edge{2, 1}, &Edge{0, 3}, &Edge{2, 3})
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b)
-	c := NewChain()
-	boxMark := map[int]bool{}
-	err = b.GetChain(1, 3, boxMark, c, true)
-	if err != nil {
-		return
-	}
-	fmt.Println(c)
-	es, _ := b.GetDChainEdges(1, 1, c, c.Length-2, true)
-	err = b.Move(es...)
-	if err != nil {
-		return
-	}
-	fmt.Println(b)
-	fmt.Println("---------------------")
 }
 func TestBoard_GetDChainEdges4(t *testing.T) {
 	//死短链 全吃

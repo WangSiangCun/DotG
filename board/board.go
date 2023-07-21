@@ -356,19 +356,13 @@ func (b *Board) GetPlayerMove() {
 }
 
 // Move 移动所在边但不会占领
-func (b *Board) Move(edges ...*Edge) error {
-
+func (b *Board) Move(edges ...*Edge) {
 	for _, edge := range edges {
-		if b.State[edge.X][edge.Y] != 0 {
-			s := fmt.Sprintf("%s\n", b.String())
-			s += "X,Y: " + strconv.Itoa(edge.X) + " " + strconv.Itoa(edge.Y) + "\n"
-			return fmt.Errorf("repeated Move\n" + s)
-		}
 		b.State[edge.X][edge.Y] = 1
 	}
 	b.Now ^= 3
 	b.Turn++
-	return nil
+	return
 }
 
 // CheckoutEdge 通常Move后调用，用以检查edges占领，若占领则加分,同时设置box
@@ -413,12 +407,25 @@ func (b *Board) CheckoutEdge(edges ...*Edge) error {
 
 // MoveAndCheckout Move并checkout
 func (b *Board) MoveAndCheckout(edges ...*Edge) error {
-	if err := b.Move(edges...); err != nil {
-		return err
-	} else if err = b.CheckoutEdge(edges...); err != nil {
+	b.Move(edges...)
+	if err := b.CheckoutEdge(edges...); err != nil {
 		return err
 	}
 	return nil
+}
+
+// RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
+func (b *Board) RandomMoveByCheck() (edge [][]*Edge, err error) {
+	ees, err := b.GetMove()
+	if err != nil {
+		return nil, err
+	}
+	randInt := rand.Intn(len(ees))
+	if err = b.MoveAndCheckout(ees[randInt]...); err != nil {
+		return nil, err
+	}
+
+	return ees, nil
 }
 
 // GetFrontMove 存在安全边时的走法 获取前期走法边
@@ -562,40 +569,8 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge, err error) {
 	return
 }
 
-// GetEdgeBy12LChain 获得一二长度的链的可下边
-func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
-	//一格短链,二格短链的边也可以尝试
-	if chains, err := b.GetChains(); err != nil {
-		return nil, err
-	} else {
-		for _, chain := range chains {
-			boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-			if chain.Length == 1 {
-				if edge, err := b.GetOneEdgeByBI(boxX, boxY); err != nil {
-					return nil, err
-				} else {
-					es = append(es, edge)
-				}
-
-			} else if chain.Length == 2 {
-				//中间的那条
-				for i := 0; i < 4; i++ {
-					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-					f := b.GetFByBI(nextBX, nextBY)
-					if f == 2 && b.State[edgeX][edgeY] == 0 {
-						es = append(es, &Edge{edgeX, edgeY})
-						break
-					}
-				}
-			}
-		}
-	}
-	return es, nil
-}
-
 // GetEndMove 不存在安全边时的走法
-func (b *Board) GetEndMove() (ees []*Edge, err error) {
+func (b *Board) GetEndMove() (ees [][]*Edge, err error) {
 	nB := CopyBoard(b)
 	//不存在安全边
 
@@ -610,7 +585,7 @@ func (b *Board) GetEndMove() (ees []*Edge, err error) {
 		}
 		preEdges = append(preEdges, dGEdges...)
 	}
-	//获取死树的全吃走法
+	//获取死树的全吃和双交走法
 	if doubleCrossEdges, allEdges, err := nB.GetDTreeEdges(); err != nil {
 		return nil, err
 	} else if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
@@ -620,25 +595,43 @@ func (b *Board) GetEndMove() (ees []*Edge, err error) {
 			return nil, err
 		} else if edge == nil {
 			//没有链看，游戏也没结束，也就是只有死格
-			ees = append(ees, preEdges...)
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			ees = append(ees, tempEdges)
 			return ees, nil
 		} else {
 			//有链
-			ees = append(ees, preEdges...)
-			ees = append(ees, edge)
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, edge)
+			ees = append(ees, tempEdges)
 		}
 	} else {
 		//有死树
 		//全吃后走链
-		//模拟全吃死树,能结束游戏就选择，否则双交
+		//模拟全吃死树,能结束游戏就选择，否则双交或全吃
 		if err := nB.MoveAndCheckout(allEdges...); err != nil {
 			return nil, err
 		} else if nB.Status() != 0 {
-			ees = append(ees, preEdges...)
-			ees = append(ees, allEdges...)
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, allEdges...)
+			ees = append(ees, tempEdges)
 		} else {
-			ees = append(ees, preEdges...)
-			ees = append(ees, doubleCrossEdges...)
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, allEdges...)
+			if edge, err := nB.GetOneEdgeOfMinChain(); err != nil {
+				return nil, err
+			} else if edge != nil {
+				tempEdges = append(tempEdges, edge)
+			}
+			ees = append(ees, tempEdges)
+
+			tempEdges = []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, doubleCrossEdges...)
+			ees = append(ees, tempEdges)
 		}
 
 	}
@@ -647,26 +640,6 @@ func (b *Board) GetEndMove() (ees []*Edge, err error) {
 
 }
 
-// GetMoveOld GetMove 获取安全边
-func (b *Board) GetMoveOld() (ees [][]*Edge, err error) {
-
-	//获取前期走法边
-	if ees, err = b.GetFrontMove(); err != nil {
-		return nil, err
-	} else if len(ees) > 0 {
-		//fmt.Println("f", ees)
-		return ees, nil
-	} else {
-		//不存在安全边
-		if endMoves, err := b.GetEndMove(); err != nil {
-			return nil, err
-		} else {
-			ees = append(ees, endMoves)
-			//fmt.Println("b", ees)
-			return ees, nil
-		}
-	}
-}
 func (b *Board) GetMove() (ees [][]*Edge, err error) {
 	//获取前期走法边
 	if ees, err = b.GetFrontMoveByTurn(); err != nil {
@@ -678,9 +651,8 @@ func (b *Board) GetMove() (ees [][]*Edge, err error) {
 		if endMoves, err := b.GetEndMove(); err != nil {
 			return nil, err
 		} else {
-			ees = append(ees, endMoves)
 			//fmt.Println("b", ees)
-			return ees, nil
+			return endMoves, nil
 		}
 	}
 }
@@ -951,6 +923,38 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, err error) {
 	}
 
 	return edges, nil
+}
+
+// GetEdgeBy12LChain 获得一二长度的链的可下边
+func (b *Board) GetEdgeBy12LChain() (es []*Edge, err error) {
+	//一格短链,二格短链的边也可以尝试
+	if chains, err := b.GetChains(); err != nil {
+		return nil, err
+	} else {
+		for _, chain := range chains {
+			boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+			if chain.Length == 1 {
+				if edge, err := b.GetOneEdgeByBI(boxX, boxY); err != nil {
+					return nil, err
+				} else {
+					es = append(es, edge)
+				}
+
+			} else if chain.Length == 2 {
+				//中间的那条
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+					f := b.GetFByBI(nextBX, nextBY)
+					if f == 2 && b.State[edgeX][edgeY] == 0 {
+						es = append(es, &Edge{edgeX, edgeY})
+						break
+					}
+				}
+			}
+		}
+	}
+	return es, nil
 }
 
 // GetSafeAndAllChainEdge 获取移动后不会被捕获的边和所有链的边
@@ -1535,20 +1539,6 @@ func (b *Board) GetOneEdgeByBI(boxI, boxJ int) (edges *Edge, err error) {
 		}
 	}
 	return edges, nil
-}
-
-// RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
-func (b *Board) RandomMoveByCheck() (edge [][]*Edge, err error) {
-	ees, err := b.GetMove()
-	if err != nil {
-		return nil, err
-	}
-	randInt := rand.Intn(len(ees))
-	if err = b.MoveAndCheckout(ees[randInt]...); err != nil {
-		return nil, err
-	}
-
-	return ees, nil
 }
 
 // IsDCircle 格子freedom为一时才可调用
