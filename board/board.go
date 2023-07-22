@@ -355,6 +355,18 @@ func (b *Board) GetPlayerMove() {
 	fmt.Println(b)
 }
 
+// Status 获得游戏状态
+func (b *Board) Status() int {
+	if b.S[1]+b.S[2] < 25 {
+		return 0
+	}
+	if b.S[1] > b.S[2] {
+		return 1
+	} else {
+		return 2
+	}
+}
+
 // Move 移动所在边但不会占领
 func (b *Board) Move(edges ...*Edge) {
 	for _, edge := range edges {
@@ -591,9 +603,9 @@ func (b *Board) GetEndMove() (ees [][]*Edge, err error) {
 	} else if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
 		//没有死树，只能走链
 		//获取链边
-		if edge, err := nB.GetOneEdgeOfMinChain(); err != nil {
+		if edges, err := nB.GetEdgesOfAllChain(); err != nil {
 			return nil, err
-		} else if edge == nil {
+		} else if edges == nil {
 			//没有链看，游戏也没结束，也就是只有死格
 			tempEdges := []*Edge{}
 			tempEdges = append(tempEdges, preEdges...)
@@ -601,10 +613,13 @@ func (b *Board) GetEndMove() (ees [][]*Edge, err error) {
 			return ees, nil
 		} else {
 			//有链
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			tempEdges = append(tempEdges, edge)
-			ees = append(ees, tempEdges)
+			for _, edge := range edges {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, edge)
+				ees = append(ees, tempEdges)
+			}
+
 		}
 	} else {
 		//有死树
@@ -618,17 +633,21 @@ func (b *Board) GetEndMove() (ees [][]*Edge, err error) {
 			tempEdges = append(tempEdges, allEdges...)
 			ees = append(ees, tempEdges)
 		} else {
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			tempEdges = append(tempEdges, allEdges...)
-			if edge, err := nB.GetOneEdgeOfMinChain(); err != nil {
+			//全吃，吃完还要走个链
+			if edges, err := nB.GetEdgesOfAllChain(); err != nil {
 				return nil, err
-			} else if edge != nil {
-				tempEdges = append(tempEdges, edge)
-			}
-			ees = append(ees, tempEdges)
+			} else if edges != nil {
+				for _, edge := range edges {
+					tempEdges := []*Edge{}
+					tempEdges = append(tempEdges, preEdges...)
+					tempEdges = append(tempEdges, allEdges...)
+					tempEdges = append(tempEdges, edge)
+					ees = append(ees, tempEdges)
+				}
 
-			tempEdges = []*Edge{}
+			}
+			//双交
+			tempEdges := []*Edge{}
 			tempEdges = append(tempEdges, preEdges...)
 			tempEdges = append(tempEdges, doubleCrossEdges...)
 			ees = append(ees, tempEdges)
@@ -732,6 +751,40 @@ func (b *Board) GetOneEdgeOfMinChain() (*Edge, error) {
 	}
 	//如果是长链,或者一格短链
 	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
+
+}
+
+// GetEdgesOfAllChain 获取所有的链的一条边
+func (b *Board) GetEdgesOfAllChain() (es []*Edge, err error) {
+	//没有死树，只能走链
+	//获取链边
+	if chains, err := b.GetChains(); err != nil {
+		return nil, err
+	} else {
+		for _, chain := range chains {
+			boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
+			if chain.Length == 2 {
+				//中间的那条
+				for i := 0; i < 4; i++ {
+					edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+					nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+					f := b.GetFByBI(nextBX, nextBY)
+					if f == 2 && b.State[edgeX][edgeY] == 0 {
+						es = append(es, &Edge{edgeX, edgeY})
+						break
+					}
+				}
+			} else {
+				if edge, err := b.GetOneEdgeByBI(boxX, boxY); err != nil {
+					return nil, err
+				} else {
+					es = append(es, edge)
+				}
+
+			}
+		}
+		return es, nil
+	}
 
 }
 
@@ -1680,16 +1733,4 @@ func (b *Board) dfsChainEdges(sBoxX, sBoxY int, edgesMark map[string]bool, len i
 
 	}
 	return
-}
-
-// Status 获得游戏状态
-func (b *Board) Status() int {
-	if b.S[1]+b.S[2] < 25 {
-		return 0
-	}
-	if b.S[1] > b.S[2] {
-		return 1
-	} else {
-		return 2
-	}
 }
