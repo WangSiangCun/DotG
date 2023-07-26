@@ -31,10 +31,8 @@ func BenchmarkSearch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Search(bb, 10000, 100000, 1, false, true)
 	}
-	//BenchmarkSearch-12           100          79125197 ns/op
-	//BenchmarkSearch-12           100          64363073 ns/op
-	//BenchmarkSearch-12           100          69319926 ns/op
-	//BenchmarkSearch-12           591           2000801 ns/op
+	//BenchmarkSearch-12             1        9628555300 ns/op  固定下法还扩展
+	//BenchmarkSearch-12             1        6946457300 ns/op  固定下发不扩展
 
 }
 func TestMutex(t *testing.T) {

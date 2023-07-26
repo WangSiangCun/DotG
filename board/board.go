@@ -432,6 +432,9 @@ func (b *Board) RandomMoveByCheck() (edge [][]*Edge, err error) {
 	if err != nil {
 		return nil, err
 	}
+	if ees == nil {
+		return nil, nil
+	}
 	randInt := rand.Intn(len(ees))
 	if err = b.MoveAndCheckout(ees[randInt]...); err != nil {
 		return nil, err
@@ -674,12 +677,15 @@ func (b *Board) GetMove() (ees [][]*Edge, err error) {
 		return ees, nil
 	} else {
 		//不存在安全边
-		if endMoves, err := b.GetEndMove(); err != nil {
-			return nil, err
-		} else {
-			//fmt.Println("b", ees)
-			return [][]*Edge{endMoves}, nil
+		for b.Status() == 0 {
+			if endMoves, err := b.GetEndMove(); err != nil {
+				return nil, err
+			} else {
+				b.MoveAndCheckout(endMoves...)
+			}
 		}
+		return nil, nil
+
 	}
 }
 

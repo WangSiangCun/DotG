@@ -65,15 +65,25 @@ func (n *UCTNode) GetUCB() float64 {
 func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
-	var err error
 	//固定先手开局
 	if b.Turn == 0 {
 		es = append(es, &board.Edge{4, 5})
 	} else {
-		es, err = Search(b, timeout, iter, who, isV, isHeuristic)
-		if err != nil {
+		if ees, err := b.GetFrontMove(); err != nil {
 			fmt.Println(err)
 			return nil
+		} else if ees != nil {
+			if es, err = Search(b, timeout, iter, who, isV, isHeuristic); err != nil {
+				fmt.Println(err)
+				return nil
+			}
+
+		} else if ees == nil {
+			if es, err = b.GetEndMove(); err != nil {
+				fmt.Println(err)
+				return nil
+			}
+
 		}
 	}
 
