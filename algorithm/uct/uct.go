@@ -73,7 +73,7 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool
 		if ees != nil {
 			es = Search(b, timeout, iter, who, isV, isHeuristic)
 		} else if ees == nil {
-			es = b.GetEndMove()
+			es = SearchForEnd(b, timeout, iter, who, isV, isHeuristic)
 		}
 	}
 
@@ -269,6 +269,99 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	return nN
 
 }
+func ExpandForEnd(n *UCTNode, isHeuristic bool) *UCTNode {
+	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
+	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
+	//这时候就会出现问题
+	n.rwMutex.Lock()
+	defer n.rwMutex.Unlock()
+	if n.Parents != nil {
+		n.Parents.rwMutex.Lock()
+		defer n.Parents.rwMutex.Unlock()
+	}
+
+	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
+		if n.B.Status() != 0 {
+			return n
+		}
+		var bestN *UCTNode
+		var bestUCB float64
+		bestUCB = math.MinInt32
+		for i := 0; i < len(n.Children); i++ {
+			cUCB := n.Children[i].GetUCB()
+			if cUCB > bestUCB {
+				bestUCB = cUCB
+				bestN = n.Children[i]
+			}
+		}
+		n = bestN
+
+	}
+
+	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+		ees := n.B.GetEndMoveForEnd()
+		maxL := min(len(ees), MaxChild)
+		n.UnTriedMove = make([]Untry, maxL)
+		for i := 0; i < maxL; i++ {
+			n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
+		}
+
+		if isHeuristic {
+			rew := map[string]float64{}
+			if n.Parents != nil {
+				for i, _ := range n.Parents.Children {
+					if n.Parents.Children[i].Visit > 0 {
+						rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit)) + 1e-10
+					}
+				}
+			}
+			for i, un := range n.UnTriedMove {
+				if rew[strconv.FormatInt(un.m, 10)] > 0 {
+					n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
+				} else {
+					n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
+				}
+			}
+		} else {
+			for i, _ := range n.UnTriedMove {
+				{
+					n.UnTriedMove[i].val = rand.Float64()
+				}
+			}
+		}
+
+		sort.Sort(ByX(n.UnTriedMove))
+	}
+
+	if len(n.UnTriedMove) == 0 {
+		return n
+	}
+	es := board.MtoEdges(n.UnTriedMove[0].m)
+	//fmt.Println(n.UnTriedMove)
+	nB := board.CopyBoard(n.B)
+	nB.MoveAndCheckout(es...)
+
+	//生产新结点
+	nN := NewUCTNode(nB)
+	nN.Parents = n
+	nN.LastMove = n.UnTriedMove[0].m
+
+	if n.Children == nil {
+		n.Children = make([]*UCTNode, 0, len(n.UnTriedMove))
+	}
+	n.Children = append(n.Children, nN)
+	if len(n.UnTriedMove) > 1 {
+		n.UnTriedMove = n.UnTriedMove[1:]
+	} else {
+		n.UnTriedMove = nil
+	}
+	if nN == nil {
+		fmt.Println("nN为空：n:", n.B)
+	}
+
+	return nN
+
+}
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
 		runtime.GC()
@@ -368,7 +461,7 @@ func SearchForEnd(b *board.Board, timeoutSeconds int, iter, who int, isV bool, i
 				}
 				if nowN.B.Status() == 0 {
 					//扩展
-					nowN = Expand(nowN, isHeuristic)
+					nowN = ExpandForEnd(nowN, isHeuristic)
 				}
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)

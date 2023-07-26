@@ -587,6 +587,76 @@ func (b *Board) GetEndMove() (es []*Edge) {
 
 }
 
+func (b *Board) GetEndMoveForEnd() (ees [][]*Edge) {
+	nB := CopyBoard(b)
+	//不存在安全边
+
+	preEdges := []*Edge{}
+	//获取死格
+	dGEdges := nB.GetDGridEdges()
+	if len(dGEdges) > 0 {
+		//模拟 局面不可有死格
+		nB.MoveAndCheckout(dGEdges...)
+		preEdges = append(preEdges, dGEdges...)
+	}
+	//获取死树的全吃和双交走法
+	doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
+	if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
+		//没有死树，只能走链
+		//获取链边
+		edges := nB.GetEdgesOfAllChain()
+		if edges == nil {
+			//没有链看，游戏也没结束，也就是只有死格
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			ees = append(ees, tempEdges)
+			return ees
+		} else {
+			//有链
+			for _, edge := range edges {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, edge)
+				ees = append(ees, tempEdges)
+			}
+
+		}
+	} else {
+		//有死树
+		//全吃后走链
+		//模拟全吃死树,能结束游戏就选择，否则双交或全吃
+		nB.MoveAndCheckout(allEdges...)
+		if nB.Status() != 0 {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, allEdges...)
+			ees = append(ees, tempEdges)
+		} else {
+			//全吃，吃完还要走个链
+			edges := nB.GetEdgesOfAllChain()
+			if edges != nil {
+				for _, edge := range edges {
+					tempEdges := []*Edge{}
+					tempEdges = append(tempEdges, preEdges...)
+					tempEdges = append(tempEdges, allEdges...)
+					tempEdges = append(tempEdges, edge)
+					ees = append(ees, tempEdges)
+				}
+
+			}
+			//双交
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, doubleCrossEdges...)
+			ees = append(ees, tempEdges)
+		}
+
+	}
+
+	return ees
+
+}
+
 func (b *Board) GetMove() (ees [][]*Edge) {
 	//获取前期走法边
 	ees = b.GetFrontMoveByTurn()
@@ -599,6 +669,18 @@ func (b *Board) GetMove() (ees [][]*Edge) {
 			b.MoveAndCheckout(endMoves...)
 		}
 		return nil
+
+	}
+}
+func (b *Board) GetMoveForEnd() (ees [][]*Edge) {
+	//获取前期走法边
+	ees = b.GetFrontMoveByTurn()
+	if len(ees) > 0 {
+		return ees
+	} else {
+		//不存在安全边
+		endMoves := b.GetEndMoveForEnd()
+		return endMoves
 
 	}
 }
