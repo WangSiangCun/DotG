@@ -2,6 +2,7 @@ package board
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 )
 
@@ -273,5 +274,21 @@ func TestBoard_GetSafeAndChain12Edge(t *testing.T) {
 	b.MoveAndCheckout(&Edge{1, 2}, &Edge{3, 2}, &Edge{1, 0}, &Edge{0, 7}, &Edge{3, 0})
 	es1, _ := b.GetSafeAndChain12Edge()
 	fmt.Println(es1, b)
+
+}
+func TestBoard_GetControlValue(t *testing.T) {
+	b := NewBoard()
+	for {
+		if es, err := b.Get2FEdge(); err != nil {
+			t.Fatal(err)
+		} else {
+			if es == nil {
+				break
+			}
+			rI := rand.Intn(len(es))
+			b.MoveAndCheckout(es[rI])
+		}
+	}
+	fmt.Println(b, b.GetControlValue())
 
 }

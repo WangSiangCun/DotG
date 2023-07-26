@@ -45,23 +45,17 @@ type HashValue struct {
 	Turn       int
 }
 
-const (
-	MaxChild  int     = 28
-	hashBlock uint    = 23 // prime
-	hashSize  uint    = 13000000 / hashBlock
-	INF       float64 = 1e100
-)
-
 var (
 	ucb_C     float64 = 1.4142135623730951
 	ThreadNum int     = 4
 	maxDeep   int     = 0
-	rw        sync.RWMutex
-	mutex     sync.Mutex
-	hashTable [hashBlock]map[HashKey]*HashValue
-	rwMutex   [hashBlock]sync.RWMutex
+	MaxChild  int     = 16
 )
 
+func init() {
+	rand.Seed(time.Now().Unix())
+	ThreadNum = runtime.NumCPU()
+}
 func (n *UCTNode) GetUCB() float64 {
 	if n.Visit == 0 {
 		return rand.Float64() + 1.0
@@ -92,13 +86,7 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool
 
 	return es
 }
-func init() {
-	rand.Seed(time.Now().Unix())
-	ThreadNum = runtime.NumCPU()
-	for i := uint(0); i < hashBlock; i++ {
-		hashTable[i] = make(map[HashKey]*HashValue, hashSize)
-	}
-}
+
 func (n *UCTNode) BackUp(res int, who int) {
 	if n.B.Now == who {
 		n.Win += res
@@ -301,13 +289,6 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 	return nN, nil
 
 }
-func min(a, b int) int {
-	if a > b {
-		return b
-	} else {
-		return a
-	}
-}
 func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge, err error) {
 	if b.Turn <= 1 {
 		runtime.GC()
@@ -321,17 +302,17 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuri
 	start := time.Now()
 	res := 0
 	AdjustUCB(b)
+	AdjustMaxChild(b)
 	for i := 0; i < ThreadNum; i++ {
 		go func() {
 
 			for len(stop) == 0 {
 
-				if root.Visit > iter || int(time.Since(start).Seconds()) > timeoutSeconds {
+				if root.Visit >= iter || int(time.Since(start).Seconds()) >= timeoutSeconds {
 					stop <- 1
 				}
 
 				nowN := root
-				//	mutex.Lock()
 				deep := 0
 
 				//选择节点，如果该节点没有扩展完全或者游戏结束则返回nil，否则继续选择
@@ -350,13 +331,6 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuri
 						return
 					}
 				}
-				//mutex.Unlock()
-				//bug,不知道为什么会为空
-				if nowN == nil {
-					fmt.Println("nowN为空2！")
-					return
-				}
-
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
 				if res, err = Simulation(nB, who); err != nil {
@@ -406,5 +380,22 @@ func AdjustUCB(b *board.Board) {
 		ucb_C = math.Sqrt(2.0) * 0.30
 	default:
 		ucb_C = math.Sqrt(2.0) * 0.20
+	}
+}
+func AdjustMaxChild(b *board.Board) {
+	switch {
+	case b.Turn <= 13:
+		MaxChild = 18
+	case b.Turn <= 16:
+		MaxChild = 22
+	default:
+		MaxChild = 25
+	}
+}
+func min(a, b int) int {
+	if a > b {
+		return b
+	} else {
+		return a
 	}
 }

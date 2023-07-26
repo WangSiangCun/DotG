@@ -1734,3 +1734,54 @@ func (b *Board) dfsChainEdges(sBoxX, sBoxY int, edgesMark map[string]bool, len i
 	}
 	return
 }
+
+// GetControlValue 保证此时没有短链,获取控制值
+func (b *Board) GetControlValue() int {
+	circlesNum, longChainsNum, threeLenChainsNum := 0, 0, 0
+	if cs, err := b.GetChains(); err != nil {
+		fmt.Println(err)
+		return -99
+	} else {
+		for _, c := range cs {
+			if err = c.CheckChainType(); err != nil {
+				fmt.Println(err)
+				return -99
+			}
+			if c.Type == 3 {
+				longChainsNum++
+				if c.Length == 3 {
+					threeLenChainsNum++
+				}
+			} else if c.Type == 4 {
+				circlesNum++
+			}
+
+		}
+	}
+	tbValue := 0
+	if circlesNum != 0 {
+		if longChainsNum == threeLenChainsNum {
+			if longChainsNum == 0 {
+				tbValue = 8
+			} else {
+				tbValue = 6
+
+			}
+		} else {
+			tbValue = 4
+		}
+	} else {
+		tbValue = 4
+	}
+	/*if longChainsNum == 0 && threeLenChainsNum == 0 && circlesNum != 0 {
+		tbValue = 8
+	} else if longChainsNum == threeLenChainsNum && circlesNum != 0 && longChainsNum != 0 {
+		tbValue = 6
+	} else {
+		tbValue = 4
+	}*/
+	controlValue := (25 - b.S[1] - b.S[2]) - 4*longChainsNum - 8*circlesNum + tbValue
+	fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
+	return controlValue
+
+}
