@@ -33,6 +33,7 @@ func BenchmarkSearch(b *testing.B) {
 	}
 	//BenchmarkSearch-12             1        9628555300 ns/op  固定下法还扩展
 	//BenchmarkSearch-12             1        6946457300 ns/op  固定下发不扩展
+	//BenchmarkSearch-12             1        6771940600 ns/op  优化掉err 固定下发不扩展
 
 }
 func TestMutex(t *testing.T) {
@@ -69,12 +70,12 @@ func TestMutex(t *testing.T) {
 				}
 
 				if nowN.B.Status() == 0 {
-					nowN, _ = Expand(nowN, true)
+					nowN = Expand(nowN, true)
 				}
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
 
-				res, _ = Simulation(nB, 1)
+				res = Simulation(nB, 1)
 
 				for nowN != nil {
 					nowN.BackUp(res, 1)

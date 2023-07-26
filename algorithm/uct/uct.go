@@ -69,21 +69,11 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool
 	if b.Turn == 0 {
 		es = append(es, &board.Edge{4, 5})
 	} else {
-		if ees, err := b.GetFrontMove(); err != nil {
-			fmt.Println(err)
-			return nil
-		} else if ees != nil {
-			if es, err = Search(b, timeout, iter, who, isV, isHeuristic); err != nil {
-				fmt.Println(err)
-				return nil
-			}
-
+		ees := b.GetFrontMoveByTurn()
+		if ees != nil {
+			es = Search(b, timeout, iter, who, isV, isHeuristic)
 		} else if ees == nil {
-			if es, err = b.GetEndMove(); err != nil {
-				fmt.Println(err)
-				return nil
-			}
-
+			es = b.GetEndMove()
 		}
 	}
 
@@ -117,33 +107,25 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		rwMutex:     sync.RWMutex{},
 	}
 }
-func Simulation(b *board.Board, who int) (res int, err error) {
+func Simulation(b *board.Board, who int) (res int) {
 	for b.Status() == 0 {
-		if _, err := b.RandomMoveByCheck(); err != nil {
-			return 0, err
-		}
+		b.RandomMoveByCheck()
 	}
 	e := b.Status()
 	if e == who {
-		return 1, err
+		return 1
 	} else {
-		return 0, err
+		return 0
 	}
 
 }
-func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
+func GetBestChild(n *UCTNode, isV bool) *UCTNode {
 	//n.rwMutex.Lock()
 	//defer n.rwMutex.Unlock()
 	//如果游戏已经结束
-	if n.B.Status() != 0 {
-		return nil, fmt.Errorf(" GetBestChild:游戏已经结束")
-	}
 	var bestN *UCTNode
 	var bestUCB float64
 	bestUCB = math.MinInt32
-	if len(n.Children) == 0 {
-		return nil, fmt.Errorf("GetBestChild:错误，没有孩子结点")
-	}
 	for i := 0; i < len(n.Children); i++ {
 		cUCB := n.Children[i].GetUCB()
 		if isV {
@@ -154,13 +136,10 @@ func GetBestChild(n *UCTNode, isV bool) (*UCTNode, error) {
 			bestN = n.Children[i]
 		}
 	}
-	if bestN == nil {
-		return nil, fmt.Errorf("未找到最好孩子结点")
-	}
 	if isV {
 		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d UCB_C: %v\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children), ucb_C)
 	}
-	return bestN, nil
+	return bestN
 }
 func SelectBest(n *UCTNode) (next *UCTNode) {
 	n.rwMutex.RLock()
@@ -197,7 +176,7 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 	}
 
 }
-func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
+func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
 	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
 	//这时候就会出现问题
@@ -210,7 +189,7 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
 		if n.B.Status() != 0 {
-			return n, nil
+			return n
 		}
 		var bestN *UCTNode
 		var bestUCB float64
@@ -227,17 +206,13 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 	}
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-		if ees, err := n.B.GetMove(); err != nil {
-			return nil, err
-		} else {
-			//fmt.Println(n.B, ees, "------------------")
-			maxL := min(len(ees), MaxChild)
-			//maxL := min(len(ees), len(ees))
-			n.UnTriedMove = make([]Untry, maxL)
-			for i := 0; i < maxL; i++ {
-				n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-			}
+		ees := n.B.GetMove()
+		maxL := min(len(ees), MaxChild)
+		n.UnTriedMove = make([]Untry, maxL)
+		for i := 0; i < maxL; i++ {
+			n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 		}
+
 		if isHeuristic {
 			rew := map[string]float64{}
 			if n.Parents != nil {
@@ -266,14 +241,12 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 	}
 
 	if len(n.UnTriedMove) == 0 {
-		return n, nil
+		return n
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
 	//fmt.Println(n.UnTriedMove)
 	nB := board.CopyBoard(n.B)
-	if err := nB.MoveAndCheckout(es...); err != nil {
-		return nil, err
-	}
+	nB.MoveAndCheckout(es...)
 
 	//生产新结点
 	nN := NewUCTNode(nB)
@@ -293,10 +266,10 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 		fmt.Println("nN为空：n:", n.B)
 	}
 
-	return nN, nil
+	return nN
 
 }
-func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge, err error) {
+func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
 		runtime.GC()
 	}
@@ -333,17 +306,11 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuri
 				}
 				if nowN.B.Status() == 0 {
 					//扩展
-					if nowN, err = Expand(nowN, isHeuristic); err != nil {
-						fmt.Println(err)
-						return
-					}
+					nowN = Expand(nowN, isHeuristic)
 				}
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
-				if res, err = Simulation(nB, who); err != nil {
-					fmt.Println(err)
-					return
-				}
+				res = Simulation(nB, who)
 
 				for nowN != nil {
 					nowN.BackUp(res, who)
@@ -357,16 +324,76 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuri
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
 	}
-	bestChild, err := GetBestChild(root, isV)
-	if err != nil {
-		return nil, err
-	}
+	bestChild := GetBestChild(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
 	}
 
-	return board.MtoEdges(bestChild.LastMove), nil
+	return board.MtoEdges(bestChild.LastMove)
 }
+func SearchForEnd(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuristic bool) (es []*board.Edge) {
+	if b.Turn <= 1 {
+		runtime.GC()
+	}
+	var (
+		exit = make(chan int, ThreadNum)
+		stop = make(chan int, ThreadNum)
+	)
+	maxDeep = 0
+	root := NewUCTNode(b)
+	start := time.Now()
+	res := 0
+	AdjustUCB(b)
+	AdjustMaxChild(b)
+	for i := 0; i < ThreadNum; i++ {
+		go func() {
+
+			for len(stop) == 0 {
+
+				if root.Visit >= iter || int(time.Since(start).Seconds()) >= timeoutSeconds {
+					stop <- 1
+				}
+
+				nowN := root
+				deep := 0
+
+				//选择节点，如果该节点没有扩展完全或者游戏结束则返回nil，否则继续选择
+				for next := SelectBest(nowN); next != nil; {
+					nowN = next
+					next = SelectBest(nowN)
+					deep++
+				}
+				if deep > maxDeep {
+					maxDeep = deep
+				}
+				if nowN.B.Status() == 0 {
+					//扩展
+					nowN = Expand(nowN, isHeuristic)
+				}
+				//nB仅仅用于模拟
+				nB := board.CopyBoard(nowN.B)
+				res = Simulation(nB, who)
+
+				for nowN != nil {
+					nowN.BackUp(res, who)
+					nowN = nowN.Parents
+				}
+			}
+			exit <- 1
+		}()
+	}
+
+	for i := 0; i < ThreadNum; i++ {
+		<-exit
+	}
+	bestChild := GetBestChild(root, isV)
+	if isV {
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+	}
+
+	return board.MtoEdges(bestChild.LastMove)
+}
+
 func AdjustUCB(b *board.Board) {
 	switch {
 	case b.Turn <= 11:
