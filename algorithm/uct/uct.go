@@ -238,41 +238,38 @@ func Expand(n *UCTNode, isHeuristic bool) (*UCTNode, error) {
 				n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 			}
 		}
-
-	}
-
-	if isHeuristic {
-		rew := map[string]float64{}
-		if n.Parents != nil {
-			for i, _ := range n.Parents.Children {
-				if n.Parents.Children[i].Visit > 0 {
-					rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit)) + 1e-10
+		if isHeuristic {
+			rew := map[string]float64{}
+			if n.Parents != nil {
+				for i, _ := range n.Parents.Children {
+					if n.Parents.Children[i].Visit > 0 {
+						rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit)) + 1e-10
+					}
+				}
+			}
+			for i, un := range n.UnTriedMove {
+				if rew[strconv.FormatInt(un.m, 10)] > 0 {
+					n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
+				} else {
+					n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
+				}
+			}
+		} else {
+			for i, _ := range n.UnTriedMove {
+				{
+					n.UnTriedMove[i].val = rand.Float64()
 				}
 			}
 		}
-		for i, un := range n.UnTriedMove {
-			if rew[strconv.FormatInt(un.m, 10)] > 0 {
-				n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
-				//fmt.Println("Rew", n.UnTriedMove[i].val)
-			} else {
-				n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
-				//fmt.Println("Random", n.UnTriedMove[i].val)
-			}
-			//fmt.Println(n.UnTriedMove[i].val)
-		}
-	} else {
-		for i, _ := range n.UnTriedMove {
-			{
-				n.UnTriedMove[i].val = rand.Float64()
-			}
-		}
+
+		sort.Sort(ByX(n.UnTriedMove))
 	}
 
-	sort.Sort(ByX(n.UnTriedMove))
 	if len(n.UnTriedMove) == 0 {
 		return n, nil
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
+	//fmt.Println(n.UnTriedMove)
 	nB := board.CopyBoard(n.B)
 	if err := nB.MoveAndCheckout(es...); err != nil {
 		return nil, err

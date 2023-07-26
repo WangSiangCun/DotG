@@ -1707,13 +1707,6 @@ func (b *Board) GetControlValue() (cv int) {
 	} else {
 		tbValue = 4
 	}
-	/*if longChainsNum == 0 && threeLenChainsNum == 0 && circlesNum != 0 {
-		tbValue = 8
-	} else if longChainsNum == threeLenChainsNum && circlesNum != 0 && longChainsNum != 0 {
-		tbValue = 6
-	} else {
-		tbValue = 4
-	}*/
 	controlValue := (25 - b.S[1] - b.S[2]) - 4*longChainsNum - 8*circlesNum + tbValue
 	//fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
 	return controlValue

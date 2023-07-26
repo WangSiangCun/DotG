@@ -67,7 +67,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 			}
 			if AITurn == 1 {
-				es := uct.Move(b, TimeOut, 1000000, AITurn, true, true)
+				es := uct.Move(b, TimeOut, 10000000, AITurn, true, true)
 				fmt.Println(es)
 				sendEdges(conn, es)
 			}
@@ -84,7 +84,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println(es)
 			b.MoveAndCheckout(es...)
-			es = uct.Move(b, TimeOut, 1000000, AITurn, true, true)
+			es = uct.Move(b, TimeOut, 10000000, AITurn, true, true)
 			sendEdges(conn, es)
 
 		}
