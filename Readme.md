@@ -8,8 +8,10 @@ TurnMark增加TurnMark3,前中期让子，只搜3，4自由度
 前端提示落子功能
 打谱
 走链如果默认最小，会出现有环和链的组合边的下哪条链的问题                   √
-终局不模拟扩展到终局，随机会有影响
-getFrontMove 有的版本忘记更改
+终局不模拟扩展到终局，随机会有影响                                     √
+getFrontMove 有的版本忘记更改                                       √
+终局hash
+置换node
 ![img.png](img.png)
 组合链：
 ![img_1.png](img_1.png)

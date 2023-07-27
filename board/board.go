@@ -443,7 +443,7 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 		}
 
 		//获取死树的全吃走法
-		_, allEdges, _ := nB.GetDTreeEdges()
+		doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
 		if len(allEdges) > 0 {
 			nB.MoveAndCheckout(allEdges...)
 			preEdges = append(preEdges, allEdges...)
@@ -461,6 +461,12 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
+				ees = append(ees, tempEdges)
+			}
 		case b.Turn < TurnMark2:
 			es := nB.GetSafeAndChain12Edge()
 			for _, e := range es {
@@ -469,12 +475,24 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
+				ees = append(ees, tempEdges)
+			}
 		default:
 			es := nB.GetSafeAndAllChainEdge()
 			for _, e := range es {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, preEdges...)
 				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
 		}
@@ -729,7 +747,7 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 						continue
 					}
 					//找到了以后，返回这个边
-					fmt.Println(b)
+					//	fmt.Println(b)
 					return &Edge{edgeX, edgeY}
 				}
 			}
