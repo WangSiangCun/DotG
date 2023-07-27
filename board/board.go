@@ -501,7 +501,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 	if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
 		//没有死树，只能走链
 		//获取链边
-		edge := nB.GetOneEdgeOfMinChain()
+		edge := nB.GetOneEdgeOfChains()
 		if edge == nil {
 			//没有链看，游戏也没结束，也就是只有死格
 			es = append(es, preEdges...)
@@ -533,7 +533,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			cV := b.GetControlValue()
 
 			//全吃，吃完还要走个链
-			edge := nB.GetOneEdgeOfMinChain()
+			edge := nB.GetOneEdgeOfChains()
 			if edge != nil {
 				if cV > criticalValue {
 					//保持控制的走法
@@ -641,6 +641,97 @@ func (b *Board) GetOneEdgeOfMinChain() *Edge {
 			f := b.GetFByBI(nextBX, nextBY)
 			if f == 2 && b.State[edgeX][edgeY] == 0 {
 				return &Edge{edgeX, edgeY}
+			}
+		}
+	}
+	//如果是长链,或者一格短链
+	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
+
+}
+
+// GetOneEdgeOfChains 获取链们的一条边(含组合链)
+func (b *Board) GetOneEdgeOfChains() *Edge {
+	//没有死树，只能走链
+	//获取链边
+	minL := 26
+	var minChain *Chain
+	chains := b.GetChains()
+	for _, chain := range chains {
+		if chain.Length < minL {
+			minL = chain.Length
+			minChain = chain
+			if chain.Length == 1 {
+				break
+			}
+		}
+
+	}
+
+	//死格
+	if minChain == nil {
+		return nil
+	}
+	//如果是二格短链则有两种方式,一种对手能双交，一种不能
+	if minL == 2 {
+		//获取中间的那一条
+		boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
+		for i := 0; i < 4; i++ {
+			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+			nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+			f := b.GetFByBI(nextBX, nextBY)
+			if f == 2 && b.State[edgeX][edgeY] == 0 {
+				return &Edge{edgeX, edgeY}
+			}
+		}
+	}
+	//注意组合链中的环可能不只为三，但是最小了话基本是这样的
+	if minL == 3 || minL == 6 || minL == 8 {
+		//获取中间的那一条
+		box3fX1, box3fY1, box3fX2, box3fY2 := 0, 0, 0, 0
+		eX1, eY1, eX2, eY2 := 0, 0, 0, 0
+		boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
+		for i := 0; i < 4; i++ {
+			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+			nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+			f := b.GetFByBI(nextBX, nextBY)
+			if f == 3 && b.State[edgeX][edgeY] == 0 {
+				box3fX1, box3fY1 = nextBX, nextBY
+				eX1, eY1 = edgeX, edgeY
+			}
+		}
+		if box3fX1 == 0 && box3fY1 == 0 {
+			//没找到，返回
+			return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
+		}
+
+		boxX, boxY = minChain.Endpoint[1].X, minChain.Endpoint[1].Y
+		for i := 0; i < 4; i++ {
+			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
+			nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
+			f := b.GetFByBI(nextBX, nextBY)
+			if f == 3 && b.State[edgeX][edgeY] == 0 {
+				box3fX2, box3fY2 = nextBX, nextBY
+				eX2, eY2 = edgeX, edgeY
+			}
+		}
+		if box3fX2 == 0 && box3fY2 == 0 {
+			//没找到，返回
+			return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
+		}
+		//找到自由度为3的那个格子
+		if box3fX1 == box3fX2 && box3fY1 == box3fY2 {
+			for i := 0; i < 4; i++ {
+				edgeX, edgeY := box3fX1+d1[i][0], box3fY1+d1[i][1]
+				//	fmt.Println(box3fX1, box3fY1, edgeX, edgeY)
+				if b.State[edgeX][edgeY] == 0 {
+					//与那两个边相等则继续找
+					if (edgeX == eX1 && edgeY == eY1) || (edgeX == eX2 && edgeY == eY2) {
+						continue
+					}
+					//找到了以后，返回这个边
+					fmt.Println(b)
+					return &Edge{edgeX, edgeY}
+				}
 			}
 		}
 	}

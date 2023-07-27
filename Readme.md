@@ -11,4 +11,7 @@ TurnMark增加TurnMark3,前中期让子，只搜3，4自由度
 终局不模拟扩展到终局，随机会有影响
 getFrontMove 有的版本忘记更改
 ![img.png](img.png)
+组合链：
 ![img_1.png](img_1.png)
+死树不一定全吃：
+![img_2.png](img_2.png)

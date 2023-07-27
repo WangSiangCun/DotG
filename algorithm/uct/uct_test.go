@@ -13,23 +13,11 @@ func TestSimulation(t *testing.T) {
 	}
 
 }
-func TestSearch(t *testing.T) {
-	b := board.NewBoard()
-	turn := 1
-	for b.Status() == 0 {
-		Move(b, 30, 2000000, turn, true, true)
-		turn ^= 3
-		if b.Status() != 0 {
-			break
-		}
-		Move(b, 30, 2000000, turn, true, false)
-	}
 
-}
 func BenchmarkSearch(b *testing.B) {
 	bb := board.NewBoard()
 	for i := 0; i < b.N; i++ {
-		Search(bb, 10000, 100000, 1, false, true)
+		Search(bb, 1, false, true)
 	}
 	//BenchmarkSearch-12             1        9628555300 ns/op  固定下法还扩展
 	//BenchmarkSearch-12             1        6946457300 ns/op  固定下发不扩展
