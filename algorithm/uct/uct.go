@@ -73,7 +73,8 @@ func Move(b *board.Board, timeout int, iter, who int, isV bool, isHeuristic bool
 		if ees != nil {
 			es = Search(b, timeout, iter, who, isV, isHeuristic)
 		} else if ees == nil {
-			es = SearchForEnd(b, timeout, iter, who, isV, isHeuristic)
+			//es = SearchForEnd(b, timeout, iter, who, isV, isHeuristic)
+			es = b.GetEndMove()
 		}
 	}
 
@@ -186,7 +187,9 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-
+	if n.Visit < 50 {
+		return n
+	}
 	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
 		if n.B.Status() != 0 {
 			return n
@@ -419,7 +422,7 @@ func Search(b *board.Board, timeoutSeconds int, iter, who int, isV bool, isHeuri
 	}
 	bestChild := GetBestChild(root, isV)
 	if isV {
-		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, maxDeep, float64(bestChild.Visit)/float64(root.Visit))
 	}
 
 	return board.MtoEdges(bestChild.LastMove)
@@ -481,7 +484,7 @@ func SearchForEnd(b *board.Board, timeoutSeconds int, iter, who int, isV bool, i
 	}
 	bestChild := GetBestChild(root, isV)
 	if isV {
-		fmt.Printf("Tatal:%d \n MaxDeep:%d\n", root.Visit, maxDeep)
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, maxDeep, float64(bestChild.Visit)/float64(root.Visit))
 	}
 
 	return board.MtoEdges(bestChild.LastMove)
@@ -510,6 +513,16 @@ func AdjustUCB(b *board.Board) {
 	}
 }
 func AdjustMaxChild(b *board.Board) {
+	switch {
+	case b.Turn <= 13:
+		MaxChild = 18
+	case b.Turn <= 16:
+		MaxChild = 22
+	default:
+		MaxChild = 25
+	}
+}
+func AdjustTimeLimit(b *board.Board) {
 	switch {
 	case b.Turn <= 13:
 		MaxChild = 18
