@@ -426,19 +426,8 @@ func (b *Board) RandomMoveByCheck() (edge [][]*Edge) {
 	return ees
 }
 
-// RandomMoveByCheckForEnd 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
-func (b *Board) RandomMoveByCheckForEnd() (edge [][]*Edge) {
-	ees := b.GetMove()
-	randInt := rand.Intn(len(ees))
-	b.MoveAndCheckout(ees[randInt]...)
-	return ees
-}
-
 // GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
 func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
-	//	defer func() {
-	//fmt.Println(ees, err)
-	//}()
 	nB := CopyBoard(b)
 	//存在安全边
 	edges2f := nB.Get2FEdge()
@@ -459,13 +448,12 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 			nB.MoveAndCheckout(allEdges...)
 			preEdges = append(preEdges, allEdges...)
 		}
-
-		if b.Turn == 0 {
+		switch {
+		case b.Turn == 0:
 			//0肯定是先手
 			ees = append(ees, []*Edge{&Edge{4, 5}})
-			return ees
-		} //前几回合，只走三自由度
-		if b.Turn < TurnMark1 {
+		case b.Turn < TurnMark1:
+			//前几回合，只走三自由度
 			es := nB.GetSafeNo4Edge()
 			for _, e := range es {
 				tempEdges := []*Edge{}
@@ -473,20 +461,7 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
-
-			return ees
-			//中间几回合只走三和短链+任意四自由度=规定的数字
-		} else if b.Turn >= TurnMark1 && b.Turn < TurnMark2 {
-			es := nB.Get2FEdge()
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
-
-			return ees
-		} else if b.Turn >= TurnMark2 {
+		case b.Turn < TurnMark2:
 			es := nB.GetSafeAndChain12Edge()
 			for _, e := range es {
 				tempEdges := []*Edge{}
@@ -494,18 +469,17 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
-
-			return ees
+		default:
+			es := nB.GetSafeAndAllChainEdge()
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
 		}
-		/*&& b.Turn < TurnMark2 {
 
-			//后面几回合全走(三四自由度+短链)
-		} else if b.Turn > TurnMark2 {
-
-		}*/
 	}
-
-	//没有安全边
 	return
 }
 
@@ -587,76 +561,6 @@ func (b *Board) GetEndMove() (es []*Edge) {
 
 }
 
-func (b *Board) GetEndMoveForEnd() (ees [][]*Edge) {
-	nB := CopyBoard(b)
-	//不存在安全边
-
-	preEdges := []*Edge{}
-	//获取死格
-	dGEdges := nB.GetDGridEdges()
-	if len(dGEdges) > 0 {
-		//模拟 局面不可有死格
-		nB.MoveAndCheckout(dGEdges...)
-		preEdges = append(preEdges, dGEdges...)
-	}
-	//获取死树的全吃和双交走法
-	doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
-	if len(doubleCrossEdges) == 0 && len(allEdges) == 0 {
-		//没有死树，只能走链
-		//获取链边
-		edges := nB.GetEdgesOfAllChain()
-		if edges == nil {
-			//没有链看，游戏也没结束，也就是只有死格
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			ees = append(ees, tempEdges)
-			return ees
-		} else {
-			//有链
-			for _, edge := range edges {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, edge)
-				ees = append(ees, tempEdges)
-			}
-
-		}
-	} else {
-		//有死树
-		//全吃后走链
-		//模拟全吃死树,能结束游戏就选择，否则双交或全吃
-		nB.MoveAndCheckout(allEdges...)
-		if nB.Status() != 0 {
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			tempEdges = append(tempEdges, allEdges...)
-			ees = append(ees, tempEdges)
-		} else {
-			//全吃，吃完还要走个链
-			edges := nB.GetEdgesOfAllChain()
-			if edges != nil {
-				for _, edge := range edges {
-					tempEdges := []*Edge{}
-					tempEdges = append(tempEdges, preEdges...)
-					tempEdges = append(tempEdges, allEdges...)
-					tempEdges = append(tempEdges, edge)
-					ees = append(ees, tempEdges)
-				}
-
-			}
-			//双交
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			tempEdges = append(tempEdges, doubleCrossEdges...)
-			ees = append(ees, tempEdges)
-		}
-
-	}
-
-	return ees
-
-}
-
 func (b *Board) GetMove() (ees [][]*Edge) {
 	//获取前期走法边
 	ees = b.GetFrontMoveByTurn()
@@ -669,18 +573,6 @@ func (b *Board) GetMove() (ees [][]*Edge) {
 			b.MoveAndCheckout(endMoves...)
 		}
 		return nil
-
-	}
-}
-func (b *Board) GetMoveForEnd() (ees [][]*Edge) {
-	//获取前期走法边
-	ees = b.GetFrontMoveByTurn()
-	if len(ees) > 0 {
-		return ees
-	} else {
-		//不存在安全边
-		endMoves := b.GetEndMoveForEnd()
-		return endMoves
 
 	}
 }
