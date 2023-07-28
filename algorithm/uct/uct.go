@@ -91,11 +91,11 @@ func Move(b *board.Board, who int, isV bool, isHeuristic bool) []*board.Edge {
 	return es
 }
 
-func (n *UCTNode) BackUp(res int, who int) {
-	if n.B.Now == who {
-		n.Win += res
+func (n *UCTNode) BackUp(res int) {
+	if n.B.Now == res {
+		n.Win += 1
 	} else {
-		n.Win += 1 - res
+		n.Win += 0
 	}
 	n.Visit++
 }
@@ -111,16 +111,12 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		rwMutex:     sync.RWMutex{},
 	}
 }
-func Simulation(b *board.Board, who int) (res int) {
+func Simulation(b *board.Board) (res int) {
 	for b.Status() == 0 {
 		b.RandomMoveByCheck()
 	}
-	e := b.Status()
-	if e == who {
-		return 1
-	} else {
-		return 0
-	}
+	res = b.Status()
+	return res
 
 }
 func GetBestChild(n *UCTNode, isV bool) *UCTNode {
@@ -317,10 +313,10 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 				}
 				//nB仅仅用于模拟
 				nB := board.CopyBoard(nowN.B)
-				res = Simulation(nB, who)
+				res = Simulation(nB)
 
 				for nowN != nil {
-					nowN.BackUp(res, who)
+					nowN.BackUp(res)
 					nowN = nowN.Parents
 				}
 			}
