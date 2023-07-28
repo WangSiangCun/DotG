@@ -259,14 +259,12 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	if n.Children == nil {
 		n.Children = make([]*UCTNode, 0, len(n.UnTriedMove))
 	}
+
 	n.Children = append(n.Children, nN)
 	if len(n.UnTriedMove) > 1 {
 		n.UnTriedMove = n.UnTriedMove[1:]
 	} else {
 		n.UnTriedMove = nil
-	}
-	if nN == nil {
-		fmt.Println("nN为空：n:", n.B)
 	}
 
 	return nN
@@ -337,9 +335,10 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 			fmt.Println("Error opening file:", err)
 			return
 		}
-		file.Close()
+
 		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 		printTree(root, 0, file)
+		file.Close()
 	}
 	return board.MtoEdges(bestChild.LastMove)
 }
@@ -400,7 +399,6 @@ func min(a, b int) int {
 }
 
 func printTree(node *UCTNode, depth int, writer *os.File) {
-	// Print the current node information
 	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, board.MtoEdges(node.LastMove))
 
 	for _, child := range node.Children {
