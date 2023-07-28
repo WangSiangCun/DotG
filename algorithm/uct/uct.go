@@ -250,7 +250,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		return n
 	}
 	es := board.MtoEdges(n.UnTriedMove[0].m)
-	//fmt.Println(n.UnTriedMove)
+
 	nB := board.CopyBoard(n.B)
 	nB.MoveAndCheckout(es...)
 

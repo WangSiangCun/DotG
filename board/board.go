@@ -323,15 +323,6 @@ func IsBox(boxX, boxY int) bool {
 	}
 }
 
-/*
-	func (b *Board) BitMove(i int) {
-		if i > 63 {
-			//b.M[1] |= 1 << (i - 64)
-		} else {
-			//	b.M[0] |= 1 << i
-		}
-	}
-*/
 func (b *Board) GetPlayerMove() {
 	n := 0
 	x, y := 0, 0
@@ -482,7 +473,7 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				ees = append(ees, tempEdges)
 			}
 		default:
-			es := nB.GetSafeAndAllChainEdge()
+			es := nB.GetSafeAnd123ChainEdge()
 			for _, e := range es {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, preEdges...)
@@ -992,8 +983,8 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge) {
 	return es
 }
 
-// GetSafeAndAllChainEdge 获取移动后不会被捕获的边和所有链的边
-func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge) {
+// GetSafeAnd123ChainEdge 获取移动后不会被捕获的边和所有链的边
+func (b *Board) GetSafeAnd123ChainEdge() (edges []*Edge) {
 	boxesMark := map[int]bool{}
 	chains := []*Chain{}
 	for i := 0; i < 11; i++ {
@@ -1038,7 +1029,7 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge) {
 					break
 				}
 			}
-		} else {
+		} else if chain.Length <= 3 {
 			edge := b.GetOneEdgeByBI(boxX, boxY)
 			edges = append(edges, edge)
 
