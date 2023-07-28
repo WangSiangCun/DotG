@@ -473,7 +473,7 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				ees = append(ees, tempEdges)
 			}
 		default:
-			es := nB.GetSafeAnd123ChainEdge()
+			es := nB.GetSafeAndAllChainEdge()
 			for _, e := range es {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, preEdges...)
@@ -984,7 +984,7 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge) {
 }
 
 // GetSafeAnd123ChainEdge 获取移动后不会被捕获的边和所有链的边
-func (b *Board) GetSafeAnd123ChainEdge() (edges []*Edge) {
+func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge) {
 	boxesMark := map[int]bool{}
 	chains := []*Chain{}
 	for i := 0; i < 11; i++ {
@@ -1029,7 +1029,7 @@ func (b *Board) GetSafeAnd123ChainEdge() (edges []*Edge) {
 					break
 				}
 			}
-		} else if chain.Length <= 3 {
+		} else {
 			edge := b.GetOneEdgeByBI(boxX, boxY)
 			edges = append(edges, edge)
 

@@ -17,3 +17,4 @@ getFrontMove 有的版本忘记更改                                       √
 ![img_1.png](img_1.png)
 死树不一定全吃：
 ![img_2.png](img_2.png)
+![img_3.png](img_3.png)

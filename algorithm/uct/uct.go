@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -18,7 +19,7 @@ type UCTNode struct {
 	B           *board.Board
 	Children    []*UCTNode
 	Parents     *UCTNode
-	Visit, Now  int
+	Visit       int
 	Win         int //0 无，1 ，2
 	UnTriedMove []Untry
 	LastMove    int64
@@ -281,6 +282,7 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 	)
 	maxDeep = 0
 	root := NewUCTNode(b)
+
 	start := time.Now()
 	res := 0
 	AdjustUCB(b)
@@ -330,8 +332,15 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 	bestChild := GetBestChild(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, maxDeep, float64(bestChild.Visit)/float64(root.Visit))
+		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return
+		}
+		file.Close()
+		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		printTree(root, 0, file)
 	}
-
 	return board.MtoEdges(bestChild.LastMove)
 }
 func AdjustUCB(b *board.Board) {
@@ -388,4 +397,21 @@ func min(a, b int) int {
 	} else {
 		return a
 	}
+}
+
+func printTree(node *UCTNode, depth int, writer *os.File) {
+	// Print the current node information
+	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, board.MtoEdges(node.LastMove))
+
+	for _, child := range node.Children {
+		printTree(child, depth+1, writer)
+	}
+}
+
+func getIndent(depth int) string {
+	indent := ""
+	for i := 0; i < depth; i++ {
+		indent += "\t"
+	}
+	return indent
 }
