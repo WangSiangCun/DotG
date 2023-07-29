@@ -65,7 +65,7 @@ func (n *UCTNode) GetUCB() float64 {
 	}
 	return float64(n.Win)/float64(n.Visit) + C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
-func Move(b *board.Board, who int, isV bool, isHeuristic bool) []*board.Edge {
+func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
 	//固定先手开局
@@ -74,7 +74,7 @@ func Move(b *board.Board, who int, isV bool, isHeuristic bool) []*board.Edge {
 	} else {
 		ees := b.GetFrontMoveByTurn()
 		if ees != nil {
-			es = Search(b, who, isV, isHeuristic)
+			es = Search(b, mode, isV, isHeuristic)
 		} else if ees == nil {
 			es = b.GetEndMove()
 		}
@@ -113,10 +113,12 @@ func NewUCTNode(b *board.Board) *UCTNode {
 	}
 }
 func Simulation(b *board.Board) (res int) {
-	for b.Status() == 0 {
-		b.RandomMoveByCheck()
+	//nB仅仅用于模拟
+	nB := board.CopyBoard(b)
+	for nB.Status() == 0 {
+		nB.RandomMoveByCheck()
 	}
-	res = b.Status()
+	res = nB.Status()
 	return res
 
 }
@@ -187,13 +189,10 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	if n.Visit < 50 {
+	if n.Visit < 100 {
 		return n
 	}
 	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
-		if n.B.Status() != 0 {
-			return n
-		}
 		var bestN *UCTNode
 		var bestUCB float64
 		bestUCB = math.MinInt32
@@ -209,10 +208,14 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	}
 
 	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-		ees := n.B.GetMove()
+		eB := board.CopyBoard(n.B)
+		ees := eB.GetMove()
+		if ees == nil {
+			return n
+		}
 		maxL := min(len(ees), MaxChild)
-		n.UnTriedMove = make([]Untry, maxL)
-		for i := 0; i < maxL; i++ {
+		n.UnTriedMove = make([]Untry, len(ees))
+		for i := 0; i < len(ees); i++ {
 			n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 		}
 
@@ -221,7 +224,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 			if n.Parents != nil {
 				for i, _ := range n.Parents.Children {
 					if n.Parents.Children[i].Visit > 0 {
-						rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit)) + 1e-10
+						rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))) + 1e-10
 					}
 				}
 			}
@@ -239,6 +242,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 				}
 			}
 		}
+		n.UnTriedMove = n.UnTriedMove[:maxL]
 
 		sort.Sort(ByX(n.UnTriedMove))
 	}
@@ -270,7 +274,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	return nN
 
 }
-func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Edge) {
+func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
 		runtime.GC()
 	}
@@ -285,7 +289,7 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 	res := 0
 	AdjustUCB(b)
 	AdjustMaxChild(b)
-	AdjustTimeLimit(b)
+	AdjustTimeLimit(b, mode)
 	for i := 0; i < ThreadNum; i++ {
 		go func() {
 
@@ -307,13 +311,11 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 				if deep > maxDeep {
 					maxDeep = deep
 				}
-				if nowN.B.Status() == 0 {
-					//扩展
-					nowN = Expand(nowN, isHeuristic)
-				}
-				//nB仅仅用于模拟
-				nB := board.CopyBoard(nowN.B)
-				res = Simulation(nB)
+
+				//扩展
+				nowN = Expand(nowN, isHeuristic)
+
+				res = Simulation(nowN.B)
 
 				for nowN != nil {
 					nowN.BackUp(res)
@@ -345,19 +347,19 @@ func Search(b *board.Board, who int, isV bool, isHeuristic bool) (es []*board.Ed
 func AdjustUCB(b *board.Board) {
 	switch {
 	case b.Turn <= 11:
-		C = math.Sqrt(2.0) * 1.00
-	case b.Turn <= 13:
 		C = math.Sqrt(2.0) * 0.80
-	case b.Turn <= 15:
+	case b.Turn <= 13:
 		C = math.Sqrt(2.0) * 0.70
-	case b.Turn <= 17:
+	case b.Turn <= 15:
 		C = math.Sqrt(2.0) * 0.60
-	case b.Turn <= 19:
-		C = math.Sqrt(2.0) * 0.55
-	case b.Turn <= 23:
+	case b.Turn <= 17:
 		C = math.Sqrt(2.0) * 0.50
-	case b.Turn <= 27:
+	case b.Turn <= 19:
+		C = math.Sqrt(2.0) * 0.45
+	case b.Turn <= 23:
 		C = math.Sqrt(2.0) * 0.40
+	case b.Turn <= 27:
+		C = math.Sqrt(2.0) * 0.35
 	case b.Turn <= 31:
 		C = math.Sqrt(2.0) * 0.30
 	default:
@@ -366,29 +368,38 @@ func AdjustUCB(b *board.Board) {
 }
 func AdjustMaxChild(b *board.Board) {
 	switch {
+	case b.Turn <= 11:
+		MaxChild = 16
 	case b.Turn <= 13:
 		MaxChild = 18
-	case b.Turn <= 16:
-		MaxChild = 22
+	case b.Turn <= 15:
+		MaxChild = 20
 	default:
-		MaxChild = 25
+		MaxChild = 22
 	}
 }
-func AdjustTimeLimit(b *board.Board) {
-	switch {
-	case b.Turn <= 7:
-		TimeLimit = 15
-	case b.Turn <= 10:
-		TimeLimit = 20
-	case b.Turn <= 15:
-		TimeLimit = 30
-	case b.Turn <= 20:
-		TimeLimit = 60
-	case b.Turn <= 25:
-		TimeLimit = 30
-	default:
-		MaxChild = 10
+func AdjustTimeLimit(b *board.Board, mode int) {
+	if mode == 1 {
+		switch {
+		case b.Turn <= 7:
+			TimeLimit = 15
+		case b.Turn <= 10:
+			TimeLimit = 20
+		case b.Turn <= 15:
+			TimeLimit = 30
+		case b.Turn <= 20:
+			TimeLimit = 40
+		case b.Turn <= 25:
+			TimeLimit = 30
+		default:
+			MaxChild = 10
+		}
+	} else if mode == 2 {
+
+		TimeLimit = 12
+
 	}
+
 }
 func min(a, b int) int {
 	if a > b {

@@ -1029,7 +1029,7 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge) {
 					break
 				}
 			}
-		} else {
+		} else if chain.Length <= 3 {
 			edge := b.GetOneEdgeByBI(boxX, boxY)
 			edges = append(edges, edge)
 

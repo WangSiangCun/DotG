@@ -13,7 +13,7 @@ func AIToAI() {
 	//}
 	for b.Status() == 0 {
 		//uct.Move(b, 100, 20000, 1)
-		uct.Move(b, 1, true, false)
+		uct.Move(b, 2, true, false)
 
 		if b.Status() != 0 {
 			break
@@ -36,7 +36,7 @@ func PToAI() {
 	playerTurn ^= 3
 	for b.Status() == 0 {
 
-		uct.Move(b, playerTurn, true, false)
+		uct.Move(b, 1, true, false)
 
 		if b.Status() != 0 {
 			break
@@ -60,12 +60,12 @@ func main() {
 			b := board.NewBoard()
 			turn := 1
 			for b.Status() == 0 {
-				uct.Move(b, turn, false, true)
+				uct.Move(b, 2, false, true)
 				turn ^= 3
 				if b.Status() != 0 {
 					break
 				}
-				uct.Move(b, turn, false, false)
+				uct.Move(b, 2, false, false)
 			}
 			if b.Status() == 1 {
 				score1++
