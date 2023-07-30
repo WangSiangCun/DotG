@@ -192,87 +192,54 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	if n.Visit < 100 {
 		return n
 	}
-	if len(n.UnTriedMove) == 0 && len(n.Children) != 0 {
-		var bestN *UCTNode
-		var bestUCB float64
-		bestUCB = math.MinInt32
-		for i := 0; i < len(n.Children); i++ {
-			cUCB := n.Children[i].GetUCB()
-			if cUCB > bestUCB {
-				bestUCB = cUCB
-				bestN = n.Children[i]
-			}
-		}
-		n = bestN
-
-	}
-
-	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-		eB := board.CopyBoard(n.B)
-		ees := eB.GetMove()
-		if ees == nil {
-			return n
-		}
-		maxL := min(len(ees), MaxChild)
-		n.UnTriedMove = make([]Untry, len(ees))
-		for i := 0; i < len(ees); i++ {
-			n.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-		}
-
-		if isHeuristic {
-			rew := map[string]float64{}
-			if n.Parents != nil {
-				for i, _ := range n.Parents.Children {
-					if n.Parents.Children[i].Visit > 0 {
-						rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))) + 1e-10
-					}
-				}
-			}
-			for i, un := range n.UnTriedMove {
-				if rew[strconv.FormatInt(un.m, 10)] > 0 {
-					n.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
-				} else {
-					n.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
-				}
-			}
-		} else {
-			for i, _ := range n.UnTriedMove {
-				{
-					n.UnTriedMove[i].val = rand.Float64()
-				}
-			}
-		}
-		n.UnTriedMove = n.UnTriedMove[:maxL]
-
-		sort.Sort(ByX(n.UnTriedMove))
-	}
-
 	if len(n.UnTriedMove) == 0 {
 		return n
 	}
-	es := board.MtoEdges(n.UnTriedMove[0].m)
-
-	nB := board.CopyBoard(n.B)
-	nB.MoveAndCheckout(es...)
 
 	//生产新结点
+	es := board.MtoEdges(n.UnTriedMove[0].m)
+	nB := board.CopyBoard(n.B)
+	nB.MoveAndCheckout(es...)
 	nN := NewUCTNode(nB)
 	nN.Parents = n
 	nN.LastMove = n.UnTriedMove[0].m
-
-	if n.Children == nil {
-		n.Children = make([]*UCTNode, 0, len(n.UnTriedMove))
+	//初始化新节点
+	eB := board.CopyBoard(nN.B)
+	ees := eB.GetMove()
+	if ees == nil {
+		//代表游戏结束，不用再初始化UntriedMove和Child
+		return nN
 	}
+	maxL := min(len(ees), MaxChild)
+	nN.UnTriedMove = make([]Untry, len(ees))
+	for i := 0; i < len(ees); i++ {
+		nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
+	}
+	//启发式, 在这里调整权值
+	if isHeuristic {
+		rew := map[string]float64{}
+		for i, _ := range n.Children {
+			if n.Children[i].Visit > 0 {
+				rew[strconv.FormatInt(n.Children[i].LastMove, 10)] = (1 - (float64(n.Children[i].Win) / float64(n.Children[i].Visit))) + 1e-10
+			}
+		}
 
+		for i, un := range nN.UnTriedMove {
+			if rew[strconv.FormatInt(un.m, 10)] > 0 {
+				nN.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
+			} else {
+				nN.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
+			}
+		}
+		sort.Sort(ByX(nN.UnTriedMove))
+	}
+	nN.UnTriedMove = nN.UnTriedMove[:maxL]
+	nN.Children = make([]*UCTNode, 0, len(nN.UnTriedMove))
+	//初始化后，将nN加入n的子节点
 	n.Children = append(n.Children, nN)
-	if len(n.UnTriedMove) > 1 {
-		n.UnTriedMove = n.UnTriedMove[1:]
-	} else {
-		n.UnTriedMove = nil
-	}
+	n.UnTriedMove = n.UnTriedMove[1:]
 
 	return nN
-
 }
 func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
@@ -284,6 +251,16 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 	)
 	maxDeep = 0
 	root := NewUCTNode(b)
+
+	eB := board.CopyBoard(root.B)
+	ees := eB.GetMove()
+	maxL := min(len(ees), MaxChild)
+	root.UnTriedMove = make([]Untry, len(ees))
+	for i := 0; i < len(ees); i++ {
+		root.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
+	}
+	root.UnTriedMove = root.UnTriedMove[:maxL]
+	root.Children = make([]*UCTNode, 0, len(root.UnTriedMove))
 
 	start := time.Now()
 	res := 0
