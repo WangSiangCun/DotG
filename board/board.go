@@ -501,7 +501,10 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 	minL := 26
 	var minChain *Chain
 	chains := b.GetChains()
+	isHaveCircle := false
+	var circleChain *Chain
 	for _, chain := range chains {
+
 		if chain.Length < minL {
 			minL = chain.Length
 			minChain = chain
@@ -509,12 +512,11 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 				break
 			}
 		}
+		if chain.Type == 4 {
+			isHaveCircle = true
+			circleChain = chain
+		}
 
-	}
-
-	//死格
-	if minChain == nil {
-		return nil
 	}
 	//如果是二格短链则有两种方式,一种对手能双交，一种不能
 	if minL == 2 {
@@ -528,6 +530,9 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 				return &Edge{edgeX, edgeY}
 			}
 		}
+	}
+	if isHaveCircle {
+		return b.GetOneEdgeByBI(circleChain.Endpoint[0].X, circleChain.Endpoint[0].Y)
 	}
 	//注意组合链中的环可能不只为三，但是最小了话基本是这样的
 	if minL == 3 || minL == 6 || minL == 8 {
@@ -791,7 +796,7 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge) {
 	return es
 }
 
-// GetSafeAnd123ChainEdge 获取移动后不会被捕获的边和所有链的边
+// GetSafeAndAllChainEdge 获取移动后不会被捕获的边和所有链的边
 func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge) {
 	boxesMark := map[int]bool{}
 	chains := []*Chain{}
