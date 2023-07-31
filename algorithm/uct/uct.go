@@ -123,8 +123,6 @@ func Simulation(b *board.Board) (res int) {
 
 }
 func GetBestChild(n *UCTNode, isV bool) *UCTNode {
-	//n.rwMutex.Lock()
-	//defer n.rwMutex.Unlock()
 	//如果游戏已经结束
 	var bestN *UCTNode
 	var bestUCB float64
@@ -206,10 +204,8 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	//初始化新节点
 	eB := board.CopyBoard(nN.B)
 	ees := eB.GetMove()
-	if ees == nil {
-		//代表游戏结束，不用再初始化UntriedMove和Child
-		return nN
-	}
+	//fmt.Println(ees)
+
 	maxL := min(len(ees), MaxChild)
 	nN.UnTriedMove = make([]Untry, len(ees))
 	for i := 0; i < len(ees); i++ {
@@ -372,9 +368,9 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 			MaxChild = 10
 		}
 	} else if mode == 2 {
-
 		TimeLimit = 12
-
+	} else if mode == 3 {
+		TimeLimit = 2
 	}
 
 }

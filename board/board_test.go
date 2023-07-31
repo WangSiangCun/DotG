@@ -68,3 +68,11 @@ func TestEdgesToM(t *testing.T) {
 	es = MtoEdges(M)
 	fmt.Println(es)
 }
+func TestBoard_GetDGridEdges(t *testing.T) {
+	b := NewBoard()
+	b.MoveAndCheckout(&Edge{2, 7}, &Edge{3, 6}, &Edge{3, 8}, &Edge{3, 10}, &Edge{4, 9})
+	fmt.Println(b)
+	fmt.Println(b.GetDGridEdges())
+	_, f1 := b.Get2FEdgeAndMessage()
+	fmt.Println(b.GetDGridEdgesByMessage(f1))
+}
