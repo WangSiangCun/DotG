@@ -219,7 +219,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 				un.val = rew[strconv.FormatInt(un.m, 10)]
 				//fmt.Println(un.val)
 			} else {
-				un.val = 0.5 + rand.Float64()*1e-8
+				un.val = 0.61 + rand.Float64()*1e-8
 			}
 		}
 
