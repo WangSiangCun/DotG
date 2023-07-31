@@ -365,7 +365,7 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 		case b.Turn <= 25:
 			TimeLimit = 30
 		default:
-			MaxChild = 10
+			TimeLimit = 10
 		}
 	} else if mode == 2 {
 		TimeLimit = 12
