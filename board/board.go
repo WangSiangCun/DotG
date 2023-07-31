@@ -517,12 +517,10 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 
 	}
 
-	//死格
-	if minChain == nil {
-		return nil
-	}
 	//如果是二格短链则有两种方式,一种对手能双交，一种不能
-	if minL == 2 {
+	if minL == 1 {
+		return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
+	} else if minL == 2 {
 		//获取中间的那一条
 		boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
 		for i := 0; i < 4; i++ {
@@ -533,12 +531,10 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 				return &Edge{edgeX, edgeY}
 			}
 		}
-	}
-	if isHaveCircle {
+	} else if isHaveCircle {
 		return b.GetOneEdgeByBI(circleChain.Endpoint[0].X, circleChain.Endpoint[0].Y)
-	}
-	//注意组合链中的环可能不只为三，但是最小了话基本是这样的
-	if minL == 3 || minL == 6 || minL == 8 {
+	} else if minL == 3 || minL == 6 || minL == 8 {
+		//注意组合链中的环可能不只为三，但是最小了话基本是这样的
 		//获取中间的那一条
 		box3fX1, box3fY1, box3fX2, box3fY2 := 0, 0, 0, 0
 		eX1, eY1, eX2, eY2 := 0, 0, 0, 0
@@ -588,7 +584,6 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 			}
 		}
 	}
-	//如果是长链,或者一格短链
 	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
 
 }
