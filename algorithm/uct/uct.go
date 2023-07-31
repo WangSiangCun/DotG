@@ -154,10 +154,7 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 		return nil
 	}
 	//获取还没尝试的边
-	if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
-		//Untried==0 children==0还没开始扩展，比如root
-		return nil
-	} else if len(n.UnTriedMove) == 0 {
+	if len(n.UnTriedMove) == 0 {
 		//Untried==0 children!=0 属于扩展完全
 		var bestN *UCTNode
 		var bestUCB float64
@@ -187,6 +184,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
+	//n.Visit和启发式的效果挂钩
 	if n.Visit < 100 {
 		return n
 	}
@@ -204,30 +202,32 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	//初始化新节点
 	eB := board.CopyBoard(nN.B)
 	ees := eB.GetMove()
-	//fmt.Println(ees)
 
 	maxL := min(len(ees), MaxChild)
 	nN.UnTriedMove = make([]Untry, len(ees))
-	for i := 0; i < len(ees); i++ {
-		nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-	}
+
 	//启发式, 在这里调整权值
-	if isHeuristic {
+	if isHeuristic && n.Parents != nil {
 		rew := map[string]float64{}
-		for i, _ := range n.Children {
-			if n.Children[i].Visit > 0 {
-				rew[strconv.FormatInt(n.Children[i].LastMove, 10)] = (1 - (float64(n.Children[i].Win) / float64(n.Children[i].Visit))) + 1e-10
-			}
+		for i, _ := range n.Parents.Children {
+			rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))) + 1e-10
 		}
 
 		for i, un := range nN.UnTriedMove {
+			un.m = board.EdgesToM(ees[i]...)
 			if rew[strconv.FormatInt(un.m, 10)] > 0 {
-				nN.UnTriedMove[i].val = rew[strconv.FormatInt(un.m, 10)]
+				un.val = rew[strconv.FormatInt(un.m, 10)]
+				//fmt.Println(un.val)
 			} else {
-				nN.UnTriedMove[i].val = 0.5 + rand.Float64()*1e-8
+				un.val = 0.5 + rand.Float64()*1e-8
 			}
 		}
+
 		sort.Sort(ByX(nN.UnTriedMove))
+	} else {
+		for i := 0; i < len(ees); i++ {
+			nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
+		}
 	}
 	nN.UnTriedMove = nN.UnTriedMove[:maxL]
 	nN.Children = make([]*UCTNode, 0, len(nN.UnTriedMove))
