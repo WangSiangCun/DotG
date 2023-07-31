@@ -535,7 +535,6 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 		}
 	}
 	if isHaveCircle {
-		fmt.Println(circleChain)
 		return b.GetOneEdgeByBI(circleChain.Endpoint[0].X, circleChain.Endpoint[0].Y)
 	}
 	//注意组合链中的环可能不只为三，但是最小了话基本是这样的
@@ -1220,7 +1219,7 @@ func (b *Board) GetControlValue() (cv int) {
 		tbValue = 4
 	}
 	controlValue := (25 - b.S[1] - b.S[2]) - 4*longChainsNum - 8*circlesNum + tbValue
-	fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
+	//fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
 	return controlValue
 
 }
