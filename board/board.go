@@ -516,7 +516,10 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 		}
 
 	}
-
+	//死格 不可删除
+	if minL == 26 {
+		return nil
+	}
 	//如果是二格短链则有两种方式,一种对手能双交，一种不能
 	if minL == 1 {
 		return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
