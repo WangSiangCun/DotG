@@ -72,7 +72,7 @@ func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
 	if b.Turn == 0 {
 		es = append(es, &board.Edge{4, 5})
 	} else {
-		ees := b.GetFrontMoveByTurn()
+		ees := b.GetFrontMoveByTurnAndMessage()
 		if ees != nil {
 			es = Search(b, mode, isV, isHeuristic)
 		} else if ees == nil {
