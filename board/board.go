@@ -499,9 +499,14 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 	//没有死树，只能走链
 	//获取链边
 	minL := 26
-	var minChain *Chain
+	isHaveCircle := false
+	var minChain, circleChain *Chain
 	chains := b.GetChains()
-	for _, chain := range chains {
+	for i, chain := range chains {
+		if chain.Type == 4 {
+			isHaveCircle = true
+			circleChain = chains[i]
+		}
 		if chain.Length < minL {
 			minL = chain.Length
 			minChain = chain
@@ -528,6 +533,10 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 				return &Edge{edgeX, edgeY}
 			}
 		}
+	}
+	if isHaveCircle {
+		fmt.Println(circleChain)
+		return b.GetOneEdgeByBI(circleChain.Endpoint[0].X, circleChain.Endpoint[0].Y)
 	}
 	//注意组合链中的环可能不只为三，但是最小了话基本是这样的
 	if minL == 3 || minL == 6 || minL == 8 {
