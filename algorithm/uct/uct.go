@@ -210,7 +210,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	if isHeuristic && n.Parents != nil {
 		rew := map[string]float64{}
 		for i, _ := range n.Parents.Children {
-			rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = (1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))) + 1e-10
+			rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = 1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))
 		}
 
 		for i, un := range nN.UnTriedMove {
@@ -368,7 +368,7 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 			TimeLimit = 10
 		}
 	} else if mode == 2 {
-		TimeLimit = 12
+		TimeLimit = 20
 	} else if mode == 3 {
 		TimeLimit = 2
 	}

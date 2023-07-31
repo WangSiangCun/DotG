@@ -20,7 +20,7 @@ func AIToAI() {
 		}
 		//-----------------------------------------1
 		//uct.Move(b, 100, 10000, 1)
-		uct.Move(b, 2, true, true)
+		uct.Move(b, 2, true, false)
 
 	}
 }
@@ -47,23 +47,34 @@ func PToAI() {
 }
 func Test() {
 	score1, score2 := 0, 0
+	isH := true
 	for {
 		b := board.NewBoard()
-		turn := 1
 		for b.Status() == 0 {
-			uct.Move(b, 2, false, true)
-			turn ^= 3
+			uct.Move(b, 2, false, isH)
 			if b.Status() != 0 {
 				break
 			}
-			uct.Move(b, 2, false, false)
+			uct.Move(b, 2, false, !isH)
 		}
+
 		if b.Status() == 1 {
-			score1++
+			if isH {
+				score1++
+			} else {
+				score2++
+			}
+
 		} else {
-			score2++
+			if !isH {
+				score1++
+			} else {
+				score2++
+			}
 		}
-		fmt.Printf("score1:score2   %v:%v \n", score1, score2)
+
+		fmt.Printf("score1:score2  %v:%v isH :%v\n", score1, score2, isH)
+		isH = !isH
 	}
 }
 func FastAI() {

@@ -19,3 +19,5 @@ getFrontMove 有的版本忘记更改                                       √
 死树不一定全吃：
 ![img_2.png](img_2.png)
 ![img_3.png](img_3.png)
+算到自己赢？
+![img_4.png](img_4.png)

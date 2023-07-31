@@ -76,3 +76,34 @@ func TestBoard_GetDGridEdges(t *testing.T) {
 	_, f1 := b.Get2FEdgeAndMessage()
 	fmt.Println(b.GetDGridEdgesByMessage(f1))
 }
+func TestBoard_GetEndMove(t *testing.T) {
+	b := NewBoard()
+	b.State = [11][11]int{
+		{-1, 1, -1, 0, -1, 0, -1, 0, -1, 1, -1},
+		{0, 0, 1, 0, 1, 0, 0, 0, 1, 2, 1},
+		{-1, 0, -1, 0, -1, 1, -1, 1, -1, 1, -1},
+		{0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
+		{-1, 1, -1, 1, -1, 0, -1, 0, -1, 0, -1},
+		{0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1},
+		{-1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1},
+		{1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+		{-1, 1, -1, 0, -1, 1, -1, 0, -1, 0, -1},
+		{1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0},
+		{-1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1}}
+	b.S[1] = 1
+	b.S[2] = 2
+	b.Now = 1
+	for b.Status() == 0 {
+		es := b.GetEndMove()
+		b.MoveAndCheckout(es...)
+		for i := 1; i < 11; i += 2 {
+			for j := 1; j < 11; j += 2 {
+				t := b.GetBoxType(i, j)
+				tempBoxX, tempBoxY := BoxToXY(i, j)
+				b.Boxes[tempBoxX*5+tempBoxY].Type = t
+			}
+		}
+		fmt.Println(b)
+	}
+	fmt.Println(b)
+}

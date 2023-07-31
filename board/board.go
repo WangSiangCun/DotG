@@ -1211,7 +1211,7 @@ func (b *Board) GetControlValue() (cv int) {
 		tbValue = 4
 	}
 	controlValue := (25 - b.S[1] - b.S[2]) - 4*longChainsNum - 8*circlesNum + tbValue
-	//fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
+	fmt.Println(longChainsNum, threeLenChainsNum, circlesNum, tbValue)
 	return controlValue
 
 }
@@ -1837,6 +1837,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			es = append(es, preEdges...)
 			es = append(es, allEdges...)
 		} else {
+
 			//是个环
 			criticalValue := 0
 			if t == 1 {
@@ -1846,7 +1847,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			} else {
 				return nil
 			}
-			cV := b.GetControlValue()
+			cV := nB.GetControlValue()
 
 			//全吃，吃完还要走个链
 			edge := nB.GetOneEdgeOfChains()
