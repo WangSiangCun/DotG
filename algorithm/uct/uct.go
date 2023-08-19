@@ -2,6 +2,7 @@ package uct
 
 import (
 	"dotg/board"
+	"dotg/record"
 	"fmt"
 	"math"
 	"math/rand"
@@ -79,6 +80,8 @@ func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
 			es = b.GetEndMove()
 		}
 	}
+	//先记录
+	record.PrintContentMiddle(b, es)
 
 	b.MoveAndCheckout(es...)
 	if isV {

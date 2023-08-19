@@ -3,12 +3,14 @@ package main
 import (
 	"dotg/algorithm/uct"
 	"dotg/board"
+	"dotg/record"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -60,17 +62,25 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		msg := string(message)
 		log.Printf("接收到消息: %s\n", msg)
 		if strings.HasPrefix(msg, "NewGame") {
+			record.ClearContent()
+
 			b = board.NewBoard()
-			str := strings.Split(msg, "NewGame,")
+			str := strings.Split(msg, ",")
 			AITurn, err = strconv.Atoi(str[1])
 			if err != nil {
 				log.Println(err)
 			}
+
+			record.SetR(str[2])
+			record.SetB(str[3])
+
 			if AITurn == 1 {
 				es := uct.Move(b, 1, true, false)
 				fmt.Println(es)
 				sendEdges(conn, es)
+
 			}
+
 		} else if strings.HasPrefix(msg, "Moves") {
 			strs := strings.Split(msg, "Moves-")
 			str := strs[1]
@@ -83,9 +93,23 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				es = append(es, &board.Edge{i, j})
 			}
 			fmt.Println(es)
+			record.PrintContentMiddle(b, es)
 			b.MoveAndCheckout(es...)
-			es = uct.Move(b, 1, true, false)
+
+			//收到对方消息后游戏结束
+			if b.Status() != 0 {
+				record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+				record.PrintContentBack()
+				record.WriteToFile(b)
+			}
+			es = uct.Move(b, 3, true, false)
 			sendEdges(conn, es)
+			//发送消息后游戏结束
+			if b.Status() != 0 {
+				record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+				record.PrintContentBack()
+				record.WriteToFile(b)
+			}
 
 		}
 	}

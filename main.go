@@ -3,7 +3,10 @@ package main
 import (
 	"dotg/algorithm/uct"
 	"dotg/board"
+	"dotg/record"
 	"fmt"
+	"strconv"
+	"time"
 )
 
 func AIToAI() {
@@ -23,6 +26,11 @@ func AIToAI() {
 		uct.Move(b, 2, true, false)
 
 	}
+	record.SetR("RRRR")
+	record.SetB("BBBB")
+	record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+	record.PrintContentBack()
+	record.WriteToFile(b)
 }
 func PToAI() {
 	b := board.NewBoard()
@@ -91,6 +99,11 @@ func FastAI() {
 		uct.Move(b, 3, true, false)
 
 	}
+	record.SetR("RRRR")
+	record.SetB("BBBB")
+	record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+	record.PrintContentBack()
+	record.WriteToFile(b)
 }
 func main() {
 	mode := 0

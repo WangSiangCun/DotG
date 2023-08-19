@@ -386,10 +386,6 @@ func (b *Board) CheckoutEdge(edges ...*Edge) {
 			if boxY < 11 && boxY >= 0 && boxX < 11 && boxX >= 0 {
 				f := b.GetFByBI(boxX, boxY)
 				if f == 0 && b.State[boxX][boxY] == 0 {
-					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
-					//	b.BitMove(boxX*11 + boxY)
-					//fmt.Printf("%v %b%b\n", b, b.M[1], b.M[0])
-
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
 
@@ -409,6 +405,43 @@ func (b *Board) MoveAndCheckout(edges ...*Edge) {
 	b.Move(edges...)
 	b.CheckoutEdge(edges...)
 	return
+}
+
+// CheckoutEdgeForPrint 通常Move后调用，用以检查edges占领，若占领则加分,同时设置box,用于打谱
+func (b *Board) CheckoutEdgeForPrint(edges ...*Edge) (isOc bool) {
+
+	for _, edge := range edges {
+		flag := 2
+		if edge.X&1 == 1 {
+			flag = 0
+		}
+		//flag=2代表为横边，flag=0代表为竖边
+		for i := 0; i < 2; i++ {
+			boxX := edge.X + d1[i+flag][0]
+			boxY := edge.Y + d1[i+flag][1]
+			tempBoxX, tempBoxY := BoxToXY(boxX, boxY)
+			if boxY < 11 && boxY >= 0 && boxX < 11 && boxX >= 0 {
+				f := b.GetFByBI(boxX, boxY)
+				if f == 0 && b.State[boxX][boxY] == 0 {
+					b.State[boxX][boxY] = b.Now
+					b.S[b.Now]++
+					isOc = true
+
+				}
+				t := b.GetBoxType(boxX, boxY)
+				b.Boxes[tempBoxX*5+tempBoxY].Type = t
+
+			}
+		}
+	}
+
+	return
+}
+
+// MoveAndCheckoutForPrint Move并checkout,用于打谱
+func (b *Board) MoveAndCheckoutForPrint(edges ...*Edge) (isOc bool) {
+	b.Move(edges...)
+	return b.CheckoutEdgeForPrint(edges...)
 }
 
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
