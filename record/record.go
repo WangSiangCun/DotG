@@ -25,7 +25,7 @@ func SetR(rr string) {
 func SetB(bb string) {
 	b = bb
 }
-func PrintContentStart(rScore, bScore, date string) {
+func PrintContentStart(rScore, bScore int, date string) {
 	t := "{"
 	t += "\"R\": " + "\"" + r + "\","
 	t += "\"B\": " + "\"" + b + "\","
@@ -34,8 +34,9 @@ func PrintContentStart(rScore, bScore, date string) {
 	} else {
 		t += "\"winner\": " + "\"" + "B" + "\","
 	}
-	t += "\"RScore\": " + rScore + ","
-	t += "\"BScore\": " + bScore + ","
+	fmt.Println(rScore, bScore)
+	t += "\"RScore\": " + strconv.Itoa(rScore) + ","
+	t += "\"BScore\": " + strconv.Itoa(bScore) + ","
 	t += "\"Date\": " + "\"" + date + "\","
 	t += "\"Event\": " + "\"" + "" + "\","
 	t += "\"game\": ["

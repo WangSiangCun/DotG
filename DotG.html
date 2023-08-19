@@ -95,6 +95,7 @@
     let S1 = 0
     let S2 = 0
     let Moves = [];
+
     const socket = new WebSocket('ws://localhost:8222/ws'); // 使用实际的服务器地址和端口
     // 初始化棋盘
     let board = [
@@ -177,6 +178,7 @@
       }
       messages.innerText = "当前回合：" + Now + "S1: " + S1 + "   S2: " + S2
       if (status() != 0) {
+
         if (AITurn == status) {
           window.alert("我赢了HAHAHA")
           return

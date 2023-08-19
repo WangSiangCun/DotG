@@ -98,7 +98,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 			//收到对方消息后游戏结束
 			if b.Status() != 0 {
-				record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+				record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 				record.PrintContentBack()
 				record.WriteToFile(b)
 			}
@@ -106,7 +106,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			sendEdges(conn, es)
 			//发送消息后游戏结束
 			if b.Status() != 0 {
-				record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+				record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 				record.PrintContentBack()
 				record.WriteToFile(b)
 			}

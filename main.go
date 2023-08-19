@@ -5,7 +5,6 @@ import (
 	"dotg/board"
 	"dotg/record"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -28,7 +27,7 @@ func AIToAI() {
 	}
 	record.SetR("RRRR")
 	record.SetB("BBBB")
-	record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+	record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 	record.PrintContentBack()
 	record.WriteToFile(b)
 }
@@ -101,7 +100,7 @@ func FastAI() {
 	}
 	record.SetR("RRRR")
 	record.SetB("BBBB")
-	record.PrintContentStart(strconv.Itoa(b.S[1]), strconv.Itoa(b.S[2]), time.Now().String())
+	record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 	record.PrintContentBack()
 	record.WriteToFile(b)
 }
