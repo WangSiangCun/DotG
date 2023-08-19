@@ -189,9 +189,6 @@
 
       }
     }
-    function TurnPlayer() {
-      Now ^= 3
-    }
     // 更新棋盘
     function upBoard() {
       flag = false
@@ -199,7 +196,7 @@
         for (let j = 1; j < board[i].length; j += 2) {
           if (board[i][j] == 0) {
             //如果没占领的有格子，继续
-            if (checkAndUpdateCellValue(i, j)) {
+            if (checkAndUpdateCellValue(i, j,AITurn^3)) {
               flag = true
             }
           }
@@ -207,7 +204,6 @@
         }
       }
       if (!flag) {
-        TurnPlayer()
         //socket发送moves
         //...
         var str = 'Moves-'
@@ -226,12 +222,12 @@
       displayBoard(); // 刷新棋盘显示
     }
     // 更新棋盘
-    function reflushBoard() {
+    function reflushBoard(color) {
       for (let i = 1; i < board.length; i += 2) {
         for (let j = 1; j < board[i].length; j += 2) {
           if (board[i][j] == 0) {
             //如果没占领的有格子，继续
-            checkAndUpdateCellValue(i, j)
+            checkAndUpdateCellValue(i, j,color)
           }
 
         }
@@ -243,14 +239,14 @@
       GetMessage()
     }
     // 检查并更新格子的值
-    function checkAndUpdateCellValue(row, col) {
+    function checkAndUpdateCellValue(row, col,color) {
       if (
         board[row - 1][col] == '1' &&
         board[row + 1][col] == '1' &&
         board[row][col - 1] == '1' &&
         board[row][col + 1] == '1'
       ) {
-        board[row][col] = Now.toString();
+        board[row][col] = color;
         if (Now == 1) {
           S1++
         } else if (Now == 2) {
@@ -346,8 +342,8 @@
           y = xy[1]
           board[x][y] = 1
         }
-        TurnPlayer()
-        reflushBoard()
+
+        reflushBoard(AITurn)
 
       });
     }
