@@ -48,8 +48,9 @@ func PrintContentMiddle(b *board.Board, moves []*board.Edge) {
 	res := []*board.Edge{}
 	i := 0
 	tb := board.CopyBoard(b)
-	nB := board.CopyBoard(tb)
 	for remain != 1 {
+
+		nB := board.CopyBoard(tb)
 
 		if nB.MoveAndCheckoutForPrint(moves[i]) {
 			tb.MoveAndCheckout(moves[i])
