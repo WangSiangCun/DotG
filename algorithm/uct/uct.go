@@ -50,7 +50,7 @@ type HashValue struct {
 var (
 	C         float64       = 1.4142135623730951
 	ThreadNum int           = 4
-	maxDeep   int           = 0
+	MaxDeep   int           = 0
 	MaxChild  int           = 16
 	TimeLimit int           = 10
 	sumTime   time.Duration = 0
@@ -248,7 +248,7 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 		exit = make(chan int, ThreadNum)
 		stop = make(chan int, ThreadNum)
 	)
-	maxDeep = 0
+	MaxDeep = 0
 	root := NewUCTNode(b)
 
 	eB := board.CopyBoard(root.B)
@@ -284,8 +284,8 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 					next = SelectBest(nowN)
 					deep++
 				}
-				if deep > maxDeep {
-					maxDeep = deep
+				if deep > MaxDeep {
+					MaxDeep = deep
 				}
 
 				//扩展
@@ -307,7 +307,7 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 	}
 	bestChild := GetBestChild(root, isV)
 	if isV {
-		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, maxDeep, float64(bestChild.Visit)/float64(root.Visit))
+		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
 		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Println("Error opening file:", err)

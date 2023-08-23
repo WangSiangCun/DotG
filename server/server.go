@@ -15,7 +15,6 @@ import (
 
 const (
 	Address string = ":8222"
-	TimeOut int    = 30
 )
 
 // 使用 Gorilla WebSocket 库

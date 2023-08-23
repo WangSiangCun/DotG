@@ -1,3 +1,4 @@
+// Package record 可以输出棋谱
 package record
 
 import (

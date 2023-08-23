@@ -7,9 +7,11 @@ import (
 
 func BenchmarkSearch(b *testing.B) {
 	bb := board.NewBoard()
+	bb.Turn = 7
 	for i := 0; i < b.N; i++ {
-		Search(bb, 1, false, true)
+		Search(bb, 1, true, true)
 	}
 	//BenchmarkSearch
-	//BenchmarkSearch-12             1        15001395100 ns/op
+	//Tatal:100881  Tatal:133308
+
 }

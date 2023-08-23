@@ -16,7 +16,7 @@ type Board struct {
 	Boxes []*Box
 	//M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
 	//Edges []*Edge
-	F [11][11]int
+
 }
 
 type Chain struct {
@@ -80,32 +80,19 @@ func NewBoard() *Board {
 	b := &Board{
 		State: [11][11]int{
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0},
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0},
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0},
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0},
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1},
-			{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0},
 			{-1, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1}},
 		Turn: 0,
 		Now:  2,
 		S:    [3]int{0, 0, 0},
-		F: [11][11]int{
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
-			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		},
 	}
 	t := 0
 	b.Boxes = make([]*Box, 25)
@@ -135,7 +122,7 @@ func CopyBoard(b *Board) *Board {
 				nB.Boxes[t].X = b.Boxes[t].X
 				nB.Boxes[t].Y = b.Boxes[t].Y
 				nB.Boxes[t].Type = b.Boxes[t].Type
-				nB.F[i][j] = b.F[i][j]
+
 				t++
 			}
 
@@ -320,10 +307,10 @@ func (b *Board) String() string {
 				builder.WriteString("0")
 			} else {
 				//占领
-				if b.State[i][j] == 0 {
+				if b.State[i][j] >= 0 {
 					builder.WriteString("   ")
 				} else {
-					builder.WriteString(" " + strconv.Itoa(b.State[i][j]) + " ")
+					builder.WriteString(" " + strconv.Itoa(b.State[i][j]*-1) + " ")
 				}
 			}
 		}
@@ -378,26 +365,6 @@ func (b *Board) Status() int {
 func (b *Board) Move(edges ...*Edge) {
 	for _, edge := range edges {
 		b.State[edge.X][edge.Y] = 1
-		if edge.X&1 == 1 {
-			//竖边 y-1 y+1
-			if edge.Y-1 >= 0 {
-				b.F[edge.X][edge.Y-1]--
-			}
-			if edge.Y+1 < 11 {
-				b.F[edge.X][edge.Y+1]--
-			}
-
-		} else {
-			//竖边 x-1 x+1
-			if edge.X-1 >= 0 {
-				b.F[edge.X-1][edge.Y]--
-			}
-			if edge.X+1 < 11 {
-				b.F[edge.X+1][edge.Y]--
-			}
-
-		}
-
 	}
 	b.Now ^= 3
 	b.Turn++
@@ -418,9 +385,11 @@ func (b *Board) CheckoutEdge(edges ...*Edge) {
 			boxY := edge.Y + d1[i+flag][1]
 			tempBoxX, tempBoxY := BoxToXY(boxX, boxY)
 			if boxY < 11 && boxY >= 0 && boxX < 11 && boxX >= 0 {
+				//自由度维护
+				b.State[boxX][boxY]--
 				f := b.GetFByBI(boxX, boxY)
 				if f == 0 && b.State[boxX][boxY] == 0 {
-					b.State[boxX][boxY] = b.Now
+					b.State[boxX][boxY] = b.Now * -1
 					b.S[b.Now]++
 				}
 				t := b.GetBoxType(boxX, boxY)
@@ -450,13 +419,16 @@ func (b *Board) CheckoutEdgeForPrint(edges ...*Edge) (isOc bool) {
 		}
 		//flag=2代表为横边，flag=0代表为竖边
 		for i := 0; i < 2; i++ {
+
 			boxX := edge.X + d1[i+flag][0]
 			boxY := edge.Y + d1[i+flag][1]
 			tempBoxX, tempBoxY := BoxToXY(boxX, boxY)
 			if boxY < 11 && boxY >= 0 && boxX < 11 && boxX >= 0 {
+				//自由度维护
+				b.State[boxX][boxY]--
 				f := b.GetFByBI(boxX, boxY)
 				if f == 0 && b.State[boxX][boxY] == 0 {
-					b.State[boxX][boxY] = b.Now
+					b.State[boxX][boxY] = b.Now * -1
 					b.S[b.Now]++
 					isOc = true
 
@@ -1019,7 +991,7 @@ func (b *Board) GetFByBI(boxI, boxJ int) int {
 	if boxI <= 0 || boxI >= 10 || boxJ <= 0 || boxJ >= 10 {
 		return -1
 	}
-	return b.F[boxI][boxJ]
+	return b.State[boxI][boxJ]
 
 }
 
@@ -1493,8 +1465,6 @@ func (b *Board) Get2FEdgeAndMessage() (edges []*Edge, f1Boxes []*BoxLocation) {
 				boxesF := b.GetFByE(&he)
 				// 两边格子freedom大于3的边
 				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
-
-					//fmt.Println(b, b.State[i][j], i, j, boxesF)
 					edges = append(edges, &he)
 				}
 			} else if i&1 == 1 && j&1 == 1 {
@@ -1539,9 +1509,9 @@ func (b *Board) GetDGridEdgesByMessage(f1Boxes []*BoxLocation) (edges []*Edge) {
 					break
 
 				}
-				f1 := b.GetFByBI(boxX, boxY)
+				//f1 := b.GetFByBI(boxX, boxY) 上面判断过了，这里优化一下
 				//不为二就是死格
-				if f1 != 2 {
+				if b.State[boxX][boxY] != 2 {
 					edges = append(edges, tE)
 					edgesMark[tE.String()] = true
 
