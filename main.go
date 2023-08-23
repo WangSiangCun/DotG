@@ -10,18 +10,14 @@ import (
 
 func AIToAI() {
 	b := board.NewBoard()
-	//for i := 0; i < 2; i++ {
-	//	b.RandomMoveByCheck()
-	//}
+
 	for b.Status() == 0 {
-		//uct.Move(b, 100, 20000, 1)
 		uct.Move(b, 2, true, true)
 
 		if b.Status() != 0 {
 			break
 		}
-		//-----------------------------------------1
-		//uct.Move(b, 100, 10000, 1)
+
 		uct.Move(b, 2, true, false)
 
 	}

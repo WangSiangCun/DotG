@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	//"sync"
 )
 
 type Board struct {
@@ -17,6 +16,7 @@ type Board struct {
 	Boxes []*Box
 	//M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
 	//Edges []*Edge
+	F [11][11]int
 }
 
 type Chain struct {
@@ -75,38 +75,6 @@ const (
 	TurnMark2 int = 16
 )
 
-// CopyBoard 拷贝棋盘
-func CopyBoard(b *Board) *Board {
-	//fmt.Println("front3", b)
-	//rw.RLock()         // 加锁
-	//defer rw.RUnlock() // 确保最终释放锁
-
-	nB := NewBoard()
-	t := 0
-	for i := 0; i < 11; i += 1 {
-		for j := 0; j < 11; j += 1 {
-			nB.State[i][j] = b.State[i][j]
-			if i&1 == 1 && j&1 == 1 {
-				nB.Boxes[t].X = b.Boxes[t].X
-				nB.Boxes[t].Y = b.Boxes[t].Y
-				nB.Boxes[t].Type = b.Boxes[t].Type
-				t++
-			}
-
-		}
-
-	}
-
-	nB.Now = b.Now
-	nB.Turn = b.Turn
-	nB.S[1] = b.S[1]
-	nB.S[2] = b.S[2]
-	//	nB.M[0] = b.M[0]
-	//	nB.M[1] = b.M[1]
-	//fmt.Println("front4", nB)
-	return nB
-}
-
 // NewBoard 获得一个新棋盘
 func NewBoard() *Board {
 	b := &Board{
@@ -125,6 +93,19 @@ func NewBoard() *Board {
 		Turn: 0,
 		Now:  2,
 		S:    [3]int{0, 0, 0},
+		F: [11][11]int{
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+			{-1, 4, -1, 4, -1, 4, -1, 4, -1, 4, -1},
+			{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		},
 	}
 	t := 0
 	b.Boxes = make([]*Box, 25)
@@ -137,6 +118,39 @@ func NewBoard() *Board {
 	}
 
 	return b
+}
+
+// CopyBoard 拷贝棋盘
+func CopyBoard(b *Board) *Board {
+	//fmt.Println("front3", b)
+	//rw.RLock()         // 加锁
+	//defer rw.RUnlock() // 确保最终释放锁
+
+	nB := NewBoard()
+	t := 0
+	for i := 0; i < 11; i += 1 {
+		for j := 0; j < 11; j += 1 {
+			nB.State[i][j] = b.State[i][j]
+			if i&1 == 1 && j&1 == 1 {
+				nB.Boxes[t].X = b.Boxes[t].X
+				nB.Boxes[t].Y = b.Boxes[t].Y
+				nB.Boxes[t].Type = b.Boxes[t].Type
+				nB.F[i][j] = b.F[i][j]
+				t++
+			}
+
+		}
+
+	}
+
+	nB.Now = b.Now
+	nB.Turn = b.Turn
+	nB.S[1] = b.S[1]
+	nB.S[2] = b.S[2]
+	//	nB.M[0] = b.M[0]
+	//	nB.M[1] = b.M[1]
+	//fmt.Println("front4", nB)
+	return nB
 }
 
 // NewChain 获得新链
@@ -364,6 +378,26 @@ func (b *Board) Status() int {
 func (b *Board) Move(edges ...*Edge) {
 	for _, edge := range edges {
 		b.State[edge.X][edge.Y] = 1
+		if edge.X&1 == 1 {
+			//竖边 y-1 y+1
+			if edge.Y-1 >= 0 {
+				b.F[edge.X][edge.Y-1]--
+			}
+			if edge.Y+1 < 11 {
+				b.F[edge.X][edge.Y+1]--
+			}
+
+		} else {
+			//竖边 x-1 x+1
+			if edge.X-1 >= 0 {
+				b.F[edge.X-1][edge.Y]--
+			}
+			if edge.X+1 < 11 {
+				b.F[edge.X+1][edge.Y]--
+			}
+
+		}
+
 	}
 	b.Now ^= 3
 	b.Turn++
@@ -388,7 +422,6 @@ func (b *Board) CheckoutEdge(edges ...*Edge) {
 				if f == 0 && b.State[boxX][boxY] == 0 {
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
-
 				}
 				t := b.GetBoxType(boxX, boxY)
 				b.Boxes[tempBoxX*5+tempBoxY].Type = t
@@ -484,7 +517,6 @@ func (b *Board) GetBoxType(boxX, boxY int) int {
 	} else {
 		return 9
 	}
-
 }
 
 // GetOneEdgeOfMinChain 获取最短的链的一条边
@@ -987,28 +1019,7 @@ func (b *Board) GetFByBI(boxI, boxJ int) int {
 	if boxI <= 0 || boxI >= 10 || boxJ <= 0 || boxJ >= 10 {
 		return -1
 	}
-	freeDom := 4
-	if b.State[boxI][boxJ] == 0 {
-		//上
-		if b.State[boxI-1][boxJ] == 1 {
-			freeDom--
-		}
-		//下
-		if b.State[boxI+1][boxJ] == 1 {
-			freeDom--
-		}
-		//左
-		if b.State[boxI][boxJ-1] == 1 {
-			freeDom--
-		}
-		//右
-		if b.State[boxI][boxJ+1] == 1 {
-			freeDom--
-		}
-		return freeDom
-	} else {
-		return 0
-	}
+	return b.F[boxI][boxJ]
 
 }
 
