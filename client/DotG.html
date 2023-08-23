@@ -7,16 +7,21 @@
 <div id="main">
   <div id="chessboard"></div>
   <div id="pannel">
-    <div id="messages"></div>
-    <div>
-    <button onclick="setAITurn(1)">此AI先手</button>
-    <button onclick="setAITurn(2)">此AI后手</button>
-  </div>
-  <div>
-    <input id="RName" type="text" placeholder="请在这里输入先手方名称">
-    <input id="BName" type="text" placeholder="请在这里输入后手方名称">
+
+    <div id="messages">
+      
     </div>
-    <button onclick="start()">开始</button>
+    <div id="controller">
+      <div>
+        <button onclick="setAITurn(1)">此AI先手</button>
+        <button onclick="setAITurn(2)">此AI后手</button>
+      </div>
+      <div>
+        <input id="RName" type="text" placeholder="请在这里输入先手方名称">
+        <input id="BName" type="text" placeholder="请在这里输入后手方名称">
+      </div>
+      <button onclick="start()">开始</button>
+    </div>
     <BGSOUND id=1 balance=0 src="" loop="1">
   </div>
 </div>
@@ -36,14 +41,19 @@
     height: 620px;
     background-color: rgb(255, 255, 255);
     float: left;
+    display: none
   }
 
   #pannel {
-    background-color: #26A65B;
+    background-color: rgb(255, 255, 255);
     float: left;
     text-align: center;
     height: 50%;
-    margin: 30px;
+    margin: 40px;
+  }
+
+  #controller {
+    display: block;
   }
 
   .dot {
@@ -354,6 +364,7 @@
   }
   //开始
   function start() {
+
     if (AITurn == 0) {
       window.alert("请选择您的先后手后开始")
       return
@@ -367,13 +378,18 @@
       return;
     }
 
+    document.getElementById("chessboard").style.display = "block";//显示
+    document.getElementById("controller").style.display = "none";//显示
     displayBoard()
-    console.log("开始")
+    
+
     Connect()
     SendMessage("NewGame," + AITurn + "," + rName + "," + bName)
     if (AITurn == 1) {
       GetMessage()
     }
+
+
 
   }
   //游戏状态
