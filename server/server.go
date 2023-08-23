@@ -102,7 +102,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				record.PrintContentBack()
 				record.WriteToFile(b)
 			}
-			es = uct.Move(b, 3, true, false)
+			es = uct.Move(b, 1, true, false)
 			sendEdges(conn, es)
 			//发送消息后游戏结束
 			if b.Status() != 0 {
