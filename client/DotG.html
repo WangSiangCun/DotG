@@ -11,6 +11,7 @@
   <input id="RName" type="text" placeholder="请在这里输入先手方名称" >
   <input id="BName" type="text" placeholder="请在这里输入后手方名称">
   <button onclick="start()">开始</button>
+  <BGSOUND id=1 balance=0 src="" loop="1">
   <style>
     #chessboard {
       display: grid;
@@ -65,7 +66,20 @@
       /* 设置指针样式 */
 
     }
+    .hEdge_Clicked_lastmove {
+      background-color: rgb(0, 255, 170);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+    }
 
+    .vEdge_Clicked_lastmove {
+      background-color: rgb(0, 255, 170);
+      /* 设置边的颜色 */
+      cursor: pointer;
+      /* 设置指针样式 */
+
+    }
     .vEdge:hover,
     .hEdge:hover {
       background-color: orange;
@@ -85,16 +99,8 @@
     }
   </style>
   <script>
-    // 定义构造函数
-    function Move(x, y) {
-      this.x = x;
-      this.y = y;
-    }
-
-    let Now = 1;
     let S1 = 0
     let S2 = 0
-    let Moves = [];
 
     const socket = new WebSocket('ws://localhost:8222/ws'); // 使用实际的服务器地址和端口
     // 初始化棋盘
@@ -115,6 +121,16 @@
     let chessboard = document.getElementById('chessboard');
     let messages = document.getElementById('messages');
     let AITurn = 0
+    let lastmoves = []
+    let Moves = [];
+    function Move(x, y) {
+      this.x = x;
+      this.y = y;
+    }
+    function playSound() {
+    var audio = new Audio('./static/move.wav');
+    audio.play();
+     }
     // 显示棋盘
     function displayBoard() {// 遍历棋盘数组，生成格子并添加到棋盘元素中
       // 遍历棋盘数组，生成格子并添加到棋盘元素中
@@ -123,6 +139,25 @@
       for (let i = 0; i < board.length; i++) {
         for (let j = 0; j < board[i].length; j++) {
           let gridCell = document.createElement('div');
+          k =0 
+          for (k=0;k<lastmoves.length;k++)
+          { 
+             lx = lastmoves[k].x
+             ly = lastmoves[k].y
+             if (i==lx&&j==ly){
+              console.log(lx,ly)
+              if (i&1==1){
+                gridCell.className = 'vEdge_Clicked_lastmove'
+              }else{
+                gridCell.className = 'hEdge_Clicked_lastmove'
+              }
+              chessboard.appendChild(gridCell);
+              break
+             }
+          }
+          if (lastmoves.length!=0&&k!=lastmoves.length){
+            continue
+          }
           if (board[i][j] === '-1') {
             gridCell.className = 'dot';
           } else if ((i + j) & 1 == 1 && board[i][j] == 0) {
@@ -131,27 +166,36 @@
               //横边
               gridCell.className = 'hEdge';
               gridCell.addEventListener('click', function () {
-                gridCell.classList.remove('hEdge');
-                gridCell.classList.add('hEdge_Clicked');
+               // gridCell.classList.remove('hEdge');
+               // gridCell.classList.add('hEdge_Clicked');
                 board[i][j] = '1';
+               
                 var move = new Move(i, j);
                 Moves.push(move)
+                var lastmove = new Move(i, j);
+                lastmoves.push(lastmove)
                 upBoard()
+                displayBoard(); // 刷新棋盘显示
+               
                 //ai移动
-                moveServerMoves()
+                GetMessage()
               })
             } else {
               //竖边
               gridCell.className = 'vEdge';
               gridCell.addEventListener('click', function () {
-                gridCell.classList.remove('vEdge');
-                gridCell.classList.add('vEdge_Clicked');
+               // gridCell.classList.remove('vEdge');
+               // gridCell.classList.add('vEdge_Clicked');
                 board[i][j] = '1';
+              
                 var move = new Move(i, j);
                 Moves.push(move)
-                upBoard()
+                var lastmove = new Move(i, j);
+                lastmoves.push(lastmove)
+                  upBoard()
+                displayBoard(); // 刷新棋盘显示
                 //ai移动
-                moveServerMoves()
+                GetMessage()
               })
             }
           } else if ((i + j) & 1 == 1 && board[i][j] == 1) {
@@ -173,23 +217,16 @@
             }
 
           }
+
           chessboard.appendChild(gridCell);
         }
       }
-      messages.innerText = "当前回合：" + Now + "S1: " + S1 + "   S2: " + S2
-      if (status() != 0) {
+ 
+      messages.innerText = "当前回合："   + "S1: " + S1 + "   S2: " + S2
 
-        if (AITurn == status) {
-          window.alert("我赢了HAHAHA")
-          return
-        } else {
-          window.alert("GG")
-          return
-        }
-
-      }
+      lastmoves = []
     }
-    // 更新棋盘
+    //下边，发送数据， 更新棋盘数据但不更新显示，用于每次点击边
     function upBoard() {
       flag = false
       for (let i = 1; i < board.length; i += 2) {
@@ -213,15 +250,15 @@
           } else {
             str += Moves[i].x + "," + Moves[i].y
           }
-
         }
         SendMessage(str)
-        //清空
-        Moves = []
-      }
-      displayBoard(); // 刷新棋盘显示
+        playSound()
+        Moves=[]
+ 
+      }    
     }
-    // 更新棋盘
+
+    // 更新棋盘，信息，但是不更新显示
     function reflushBoard(color) {
       for (let i = 1; i < board.length; i += 2) {
         for (let j = 1; j < board[i].length; j += 2) {
@@ -233,10 +270,7 @@
         }
       }
 
-      displayBoard(); // 刷新棋盘显示
-    }
-    function moveServerMoves() {
-      GetMessage()
+     
     }
     // 检查并更新格子的值
     function checkAndUpdateCellValue(row, col,color) {
@@ -247,9 +281,9 @@
         board[row][col + 1] == '1'
       ) {
         board[row][col] = color;
-        if (Now == 1) {
+        if (color == 1) {
           S1++
-        } else if (Now == 2) {
+        } else if (color == 2) {
           S2++
         }
         return true
@@ -277,7 +311,7 @@
       Connect()
       SendMessage("NewGame," + AITurn+","+rName+","+bName)
       if (AITurn == 1) {
-        moveServerMoves()
+        GetMessage()
       }
 
     }
@@ -294,30 +328,12 @@
     //设置ai颜色
     function setAITurn(t) {
       AITurn = t
-      if (AITurn == 1) {
-        window.alert("选择了后手")
-      } else {
-        window.alert("选择了先手")
-      }
-
     }
     function Connect() {
       // 监听连接成功事件
       socket.addEventListener('open', () => {
       });
 
-    }
-    function Close() {
-      // 监听连接关闭事件
-      socket.addEventListener('close', () => {
-        console.log('WebSocket 连接已关闭');
-      });
-    }
-    function Error() {
-      // 监听连接错误事件
-      socket.addEventListener('error', (error) => {
-        console.error('WebSocket 连接错误:', error);
-      });
     }
     function GetMessage() {
       // 监听接收消息事件
@@ -327,23 +343,33 @@
         var ms = str.split("Moves-")
         var es = ms[1]
         if (es.includes("-")) {
+          //多次移动
           var e = es.split("-")
-          console.log(e)
+      
           for (i = 0; i < e.length; i++) {
             xy = e[i].split(",")
 
             x = xy[0]
             y = xy[1]
             board[x][y] = 1
+            var move = new Move(x, y);
+            lastmoves.push(move)
+            
           }
         } else {
+          //单次
           var xy = es.split(",")
           x = xy[0]
           y = xy[1]
           board[x][y] = 1
+          var move = new Move(x, y);
+            lastmoves.push(move)
         }
 
         reflushBoard(AITurn)
+        displayBoard(); // 刷新棋盘显示
+        playSound()
+
 
       });
     }

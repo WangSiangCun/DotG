@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
-	//"sync"
 )
 
 type Board struct {
@@ -423,7 +422,6 @@ func (b *Board) CheckoutEdge(edges ...*Edge) {
 				if f == 0 && b.State[boxX][boxY] == 0 {
 					b.State[boxX][boxY] = b.Now
 					b.S[b.Now]++
-
 				}
 				t := b.GetBoxType(boxX, boxY)
 				b.Boxes[tempBoxX*5+tempBoxY].Type = t
@@ -519,7 +517,6 @@ func (b *Board) GetBoxType(boxX, boxY int) int {
 	} else {
 		return 9
 	}
-
 }
 
 // GetOneEdgeOfMinChain 获取最短的链的一条边
