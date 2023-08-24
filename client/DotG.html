@@ -242,8 +242,23 @@
     margin: 10px;
   }
 
+  .controllerButton:focus {
+    display: inline-block;
+    padding: 15px 25px;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    outline: none;
+    color: #fff;
+    background-color: #a85255;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px #999;
+    margin: 10px;
+  }
   .controllerButton:hover {
-    background-color: #3e8e41
+    background-color: #adb868
   }
 
   .controllerButton:active {
@@ -505,6 +520,7 @@
   //设置ai颜色
   function setAITurn(t) {
     AITurn = t
+
   }
   function Connect() {
     // 监听连接成功事件
