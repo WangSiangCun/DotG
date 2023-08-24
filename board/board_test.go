@@ -131,7 +131,7 @@ func TestBoard_GetEndMove2(t *testing.T) {
 		b.MoveAndCheckout(es...)
 		for i := 1; i < 11; i += 2 {
 			for j := 1; j < 11; j += 2 {
-				if b.F[i][j] == 2 {
+				if b.State[i][j] == 2 {
 					t := b.GetBoxType(i, j)
 					tempBoxX, tempBoxY := BoxToXY(i, j)
 					b.Boxes[tempBoxX*5+tempBoxY].Type = t
