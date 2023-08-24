@@ -188,7 +188,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		defer n.Parents.rwMutex.Unlock()
 	}
 	//n.Visit和启发式的效果挂钩
-	if n.Visit < 100 {
+	if n.Visit < 20 {
 		return n
 	}
 	if len(n.UnTriedMove) == 0 {

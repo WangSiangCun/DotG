@@ -482,6 +482,7 @@ func (b *Board) GetBoxType(boxX, boxY int) int {
 		} else if b.State[boxX][boxY+1] == 1 && b.State[boxX][boxY-1] == 1 {
 			return 7
 		} else {
+			fmt.Println(b, boxX, boxY)
 			return -1
 		}
 	} else if f == 1 {
