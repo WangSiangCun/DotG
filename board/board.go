@@ -1452,6 +1452,81 @@ func (b *Board) Get2FEdge() (edges []*Edge) {
 	return
 }
 
+// GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
+func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
+	nB := CopyBoard(b)
+	//存在安全边
+	edges2f := nB.Get2FEdge()
+	if len(edges2f) > 0 {
+		preEdges := []*Edge{}
+		//存在安全边
+		//获取死格
+		dGEdges := nB.GetDGridEdges()
+		if len(dGEdges) > 0 {
+			//模拟 局面不可有死格
+			nB.MoveAndCheckout(dGEdges...)
+			preEdges = append(preEdges, dGEdges...)
+		}
+
+		//获取死树的全吃走法
+		doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
+		if len(allEdges) > 0 {
+			nB.MoveAndCheckout(allEdges...)
+			preEdges = append(preEdges, allEdges...)
+		}
+		switch {
+		case b.Turn == 0:
+			//0肯定是先手
+			ees = append(ees, []*Edge{&Edge{4, 5}})
+		case b.Turn < TurnMark1:
+			//前几回合，只走三自由度
+			es := nB.GetSafeNo4Edge()
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
+				ees = append(ees, tempEdges)
+			}
+		case b.Turn < TurnMark2:
+			es, _ := nB.GetSafeAndChain12Edge()
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
+				ees = append(ees, tempEdges)
+			}
+		default:
+			es, _ := nB.GetSafeAndAllChainEdge()
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
+				ees = append(ees, tempEdges)
+			}
+		}
+
+	}
+	return
+}
+
 // Get2FEdgeAndMessage 获取2FE和一些信息
 func (b *Board) Get2FEdgeAndMessage() (edges []*Edge, f1Boxes []*BoxLocation) {
 	/*defer func() {
