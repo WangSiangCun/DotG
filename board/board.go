@@ -775,7 +775,7 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					b.Boxes[index].Type = b.GetBoxType(i, j)
+					//b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -860,7 +860,7 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					b.Boxes[index].Type = b.GetBoxType(i, j)
+					//b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -909,7 +909,7 @@ func (b *Board) GetChains() (chains []*Chain) {
 			f := b.GetFByBI(i, j)
 			if f == 2 {
 				chain := NewChain()
-				b.Boxes[index].Type = b.GetBoxType(i, j)
+				//b.Boxes[index].Type = b.GetBoxType(i, j)
 				b.GetChain(i, j, boxesMark, chain, true)
 				chain.CheckChainType()
 				chains = append(chains, chain)
@@ -1455,25 +1455,26 @@ func (b *Board) Get2FEdge() (edges []*Edge) {
 // GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
 func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	nB := CopyBoard(b)
+
+	preEdges := []*Edge{}
+	//存在安全边
+	//获取死格
+	dGEdges := nB.GetDGridEdges()
+	if len(dGEdges) > 0 {
+		//模拟 局面不可有死格
+		nB.MoveAndCheckout(dGEdges...)
+		preEdges = append(preEdges, dGEdges...)
+	}
+
+	//获取死树的全吃走法
+	doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
+	if len(allEdges) > 0 {
+		nB.MoveAndCheckout(allEdges...)
+		preEdges = append(preEdges, allEdges...)
+	}
 	//存在安全边
 	edges2f := nB.Get2FEdge()
 	if len(edges2f) > 0 {
-		preEdges := []*Edge{}
-		//存在安全边
-		//获取死格
-		dGEdges := nB.GetDGridEdges()
-		if len(dGEdges) > 0 {
-			//模拟 局面不可有死格
-			nB.MoveAndCheckout(dGEdges...)
-			preEdges = append(preEdges, dGEdges...)
-		}
-
-		//获取死树的全吃走法
-		doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
-		if len(allEdges) > 0 {
-			nB.MoveAndCheckout(allEdges...)
-			preEdges = append(preEdges, allEdges...)
-		}
 		switch {
 		case b.Turn == 0:
 			//0肯定是先手
