@@ -775,7 +775,7 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					b.Boxes[index].Type = b.GetBoxType(i, j)
+					//b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -860,7 +860,7 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					b.Boxes[index].Type = b.GetBoxType(i, j)
+					//b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -909,7 +909,7 @@ func (b *Board) GetChains() (chains []*Chain) {
 			f := b.GetFByBI(i, j)
 			if f == 2 {
 				chain := NewChain()
-				b.Boxes[index].Type = b.GetBoxType(i, j)
+				//b.Boxes[index].Type = b.GetBoxType(i, j)
 				b.GetChain(i, j, boxesMark, chain, true)
 				chain.CheckChainType()
 				chains = append(chains, chain)
