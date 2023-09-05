@@ -14,6 +14,7 @@ type Board struct {
 	Now   int
 	S     [3]int //S[0]占位,方便1，2的下标
 	Boxes []*Box
+
 	//M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
 	//Edges []*Edge
 
@@ -1455,25 +1456,26 @@ func (b *Board) Get2FEdge() (edges []*Edge) {
 // GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
 func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	nB := CopyBoard(b)
+
+	preEdges := []*Edge{}
+	//存在安全边
+	//获取死格
+	dGEdges := nB.GetDGridEdges()
+	if len(dGEdges) > 0 {
+		//模拟 局面不可有死格
+		nB.MoveAndCheckout(dGEdges...)
+		preEdges = append(preEdges, dGEdges...)
+	}
+
+	//获取死树的全吃走法
+	doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
+	if len(allEdges) > 0 {
+		nB.MoveAndCheckout(allEdges...)
+		preEdges = append(preEdges, allEdges...)
+	}
 	//存在安全边
 	edges2f := nB.Get2FEdge()
 	if len(edges2f) > 0 {
-		preEdges := []*Edge{}
-		//存在安全边
-		//获取死格
-		dGEdges := nB.GetDGridEdges()
-		if len(dGEdges) > 0 {
-			//模拟 局面不可有死格
-			nB.MoveAndCheckout(dGEdges...)
-			preEdges = append(preEdges, dGEdges...)
-		}
-
-		//获取死树的全吃走法
-		doubleCrossEdges, allEdges, _ := nB.GetDTreeEdges()
-		if len(allEdges) > 0 {
-			nB.MoveAndCheckout(allEdges...)
-			preEdges = append(preEdges, allEdges...)
-		}
 		switch {
 		case b.Turn == 0:
 			//0肯定是先手

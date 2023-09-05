@@ -50,34 +50,24 @@ func PToAI() {
 }
 func Test() {
 	score1, score2 := 0, 0
-	isH := true
+
 	for {
 		b := board.NewBoard()
 		for b.Status() == 0 {
-			uct.Move(b, 2, false, isH)
+			uct.Move(b, 2, true, false)
 			if b.Status() != 0 {
 				break
 			}
-			uct.Move(b, 2, false, !isH)
+			uct.Move(b, 2, true, false)
 		}
 
 		if b.Status() == 1 {
-			if isH {
-				score1++
-			} else {
-				score2++
-			}
-
+			score1++
 		} else {
-			if !isH {
-				score1++
-			} else {
-				score2++
-			}
-		}
 
-		fmt.Printf("score1:score2  %v:%v isH :%v\n", score1, score2, isH)
-		isH = !isH
+			score2++
+		}
+		fmt.Println(score1, score2, "---------------------------------------------------------")
 	}
 }
 func FastAI() {
