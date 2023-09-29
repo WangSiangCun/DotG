@@ -14,7 +14,6 @@ type Board struct {
 	Now   int
 	S     [3]int //S[0]占位,方便1，2的下标
 	Boxes []*Box
-
 	//M     [2]uint64 //[0]为前64位0-63 [1]是剩下的64-128
 	//Edges []*Edge
 
@@ -776,7 +775,7 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					//b.Boxes[index].Type = b.GetBoxType(i, j)
+					b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -861,7 +860,7 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, isHave2FEdge bool) {
 				f := b.GetFByBI(i, j)
 				if f == 2 {
 					chain := NewChain()
-					//b.Boxes[index].Type = b.GetBoxType(i, j)
+					b.Boxes[index].Type = b.GetBoxType(i, j)
 					b.GetChain(i, j, boxesMark, chain, true)
 					chains = append(chains, chain)
 				}
@@ -910,7 +909,7 @@ func (b *Board) GetChains() (chains []*Chain) {
 			f := b.GetFByBI(i, j)
 			if f == 2 {
 				chain := NewChain()
-				//b.Boxes[index].Type = b.GetBoxType(i, j)
+				b.Boxes[index].Type = b.GetBoxType(i, j)
 				b.GetChain(i, j, boxesMark, chain, true)
 				chain.CheckChainType()
 				chains = append(chains, chain)
@@ -1456,7 +1455,7 @@ func (b *Board) Get2FEdge() (edges []*Edge) {
 // GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
 func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	nB := CopyBoard(b)
-
+	//存在安全边
 	preEdges := []*Edge{}
 	//存在安全边
 	//获取死格
@@ -1473,9 +1472,9 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 		nB.MoveAndCheckout(allEdges...)
 		preEdges = append(preEdges, allEdges...)
 	}
-	//存在安全边
 	edges2f := nB.Get2FEdge()
 	if len(edges2f) > 0 {
+
 		switch {
 		case b.Turn == 0:
 			//0肯定是先手
@@ -1483,46 +1482,49 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 		case b.Turn < TurnMark1:
 			//前几回合，只走三自由度
 			es := nB.GetSafeNo4Edge()
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		case b.Turn < TurnMark2:
 			es, _ := nB.GetSafeAndChain12Edge()
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		default:
 			es, _ := nB.GetSafeAndAllChainEdge()
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		}
 
 	}
@@ -1780,52 +1782,55 @@ func (b *Board) GetFrontMoveByTurnAndMessage() (ees [][]*Edge) {
 		case b.Turn < TurnMark1:
 			//前几回合，只走三自由度
 			es := nB.GetSafeNo4Edge()
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		case b.Turn < TurnMark2:
 			es, isHave := nB.GetSafeAndChain12Edge()
 			if !isHave {
 				return nil
 			}
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		default:
 			es, isHave := nB.GetSafeAndAllChainEdge()
 			if !isHave {
 				return nil
 			}
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		}
 
 	}
@@ -1914,7 +1919,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 // GetMove 获取移动 若没到EndGame则会返回前期的移动，否则返回nil
 func (b *Board) GetMove() (ees [][]*Edge) {
 	//获取前期走法边
-	ees = b.GetFrontMoveByTurnAndMessage()
+	ees = b.GetFrontMoveByTurn()
 	if len(ees) > 0 {
 		return ees
 	} else {
