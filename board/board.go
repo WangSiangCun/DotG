@@ -810,14 +810,50 @@ func (b *Board) GetSafeAndChain12Edge() (edges []*Edge, isHave2FEdge bool) {
 }
 
 // GetEdgeBy12LChain 获得一二长度的链的可下边
-func (b *Board) GetEdgeBy12LChain() (es []*Edge) {
+func (b *Board) GetEdgeBy12LChain() (edges []*Edge, isHave2FEdge bool) {
 	//一格短链,二格短链的边也可以尝试
-	chains := b.GetChains()
+	boxesMark := map[int]bool{}
+	chains := []*Chain{}
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
+			if (i+j)&1 == 1 && b.State[i][j] == 0 {
+
+				he := Edge{i, j}
+				boxesF := b.GetFByE(&he)
+				// 两边格子freedom大于3的边
+				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
+					edges = append(edges, &he)
+					isHave2FEdge = true
+				}
+			} else if i&1 == 1 && j&1 == 1 {
+				x, y := BoxToXY(i, j)
+				index := x*5 + y
+				//如果访问过
+				if boxesMark[index] {
+					continue
+				}
+				f := b.GetFByBI(i, j)
+				if f == 2 {
+					chain := NewChain()
+					b.Boxes[index].Type = b.GetBoxType(i, j)
+					b.GetChain(i, j, boxesMark, chain, true)
+					chains = append(chains, chain)
+				}
+
+			}
+
+		}
+	}
+	//如果没有只有退出
+	if !isHave2FEdge {
+		return nil, isHave2FEdge
+	}
+
 	for _, chain := range chains {
 		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
 		if chain.Length == 1 {
 			edge := b.GetOneEdgeByBI(boxX, boxY)
-			es = append(es, edge)
+			edges = append(edges, edge)
 
 		} else if chain.Length == 2 {
 			//中间的那条
@@ -826,14 +862,14 @@ func (b *Board) GetEdgeBy12LChain() (es []*Edge) {
 				nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
 				f := b.GetFByBI(nextBX, nextBY)
 				if f == 2 && b.State[edgeX][edgeY] == 0 {
-					es = append(es, &Edge{edgeX, edgeY})
+					edges = append(edges, &Edge{edgeX, edgeY})
 					break
 				}
 			}
 		}
 	}
 
-	return es
+	return edges, isHave2FEdge
 }
 
 // GetSafeAndAllChainEdge 获取移动后不会被捕获的边和所有链的边
@@ -869,7 +905,10 @@ func (b *Board) GetSafeAndAllChainEdge() (edges []*Edge, isHave2FEdge bool) {
 
 		}
 	}
-
+	//如果没有只有退出
+	if !isHave2FEdge {
+		return nil, isHave2FEdge
+	}
 	for _, chain := range chains {
 		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
 		if chain.Length == 2 {
@@ -1472,16 +1511,29 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 		nB.MoveAndCheckout(allEdges...)
 		preEdges = append(preEdges, allEdges...)
 	}
-	edges2f := nB.Get2FEdge()
-	if len(edges2f) > 0 {
 
-		switch {
-		case b.Turn == 0:
-			//0肯定是先手
-			ees = append(ees, []*Edge{&Edge{4, 5}})
-		case b.Turn < TurnMark1:
-			//前几回合，只走三自由度
-			es := nB.GetSafeNo4Edge()
+	switch {
+	case b.Turn == 0:
+		//0肯定是先手
+		ees = append(ees, []*Edge{&Edge{4, 5}})
+	case b.Turn < TurnMark1:
+		//前几回合，只走三自由度
+		es := nB.GetSafeNo4Edge()
+		if doubleCrossEdges != nil {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, dGEdges...)
+			tempEdges = append(tempEdges, doubleCrossEdges...)
+			ees = append(ees, tempEdges)
+		}
+		for _, e := range es {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, e)
+			ees = append(ees, tempEdges)
+		}
+	case b.Turn < TurnMark2:
+		es, isHave2FEdge := nB.GetSafeAndChain12Edge()
+		if isHave2FEdge {
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
@@ -1494,9 +1546,13 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
+		} else {
+			return
+		}
 
-		case b.Turn < TurnMark2:
-			es, _ := nB.GetSafeAndChain12Edge()
+	default:
+		es, isHave2FEdge := nB.GetSafeAndAllChainEdge()
+		if isHave2FEdge {
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
@@ -1509,22 +1565,8 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 				tempEdges = append(tempEdges, e)
 				ees = append(ees, tempEdges)
 			}
-
-		default:
-			es, _ := nB.GetSafeAndAllChainEdge()
-			if doubleCrossEdges != nil {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, dGEdges...)
-				tempEdges = append(tempEdges, doubleCrossEdges...)
-				ees = append(ees, tempEdges)
-			}
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
-
+		} else {
+			return
 		}
 
 	}
