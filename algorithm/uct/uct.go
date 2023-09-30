@@ -120,6 +120,7 @@ func Simulation(b *board.Board) (res int) {
 	nB := board.CopyBoard(b)
 	for nB.Status() == 0 {
 		nB.RandomMoveByCheck()
+
 	}
 	res = nB.Status()
 	return res
@@ -207,7 +208,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	ees := eB.GetMove()
 
 	maxL := min(len(ees), MaxChild)
-	nN.UnTriedMove = make([]Untry, len(ees))
+	nN.UnTriedMove = make([]Untry, maxL)
 
 	//启发式, 在这里调整权值
 	if isHeuristic && n.Parents != nil {
@@ -228,8 +229,9 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 
 		sort.Sort(ByX(nN.UnTriedMove))
 	} else {
-		for i := 0; i < len(ees); i++ {
-			nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
+		for i := 0; i < maxL; i++ {
+			//fmt.Println(i, len(ees)-1-i, maxL, len(ees))
+			nN.UnTriedMove[i].m = board.EdgesToM(ees[len(ees)-1-i]...)
 		}
 	}
 	nN.UnTriedMove = nN.UnTriedMove[:maxL]

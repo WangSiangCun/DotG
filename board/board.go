@@ -1519,31 +1519,33 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	case b.Turn < TurnMark1:
 		//前几回合，只走三自由度
 		es := nB.GetSafeNo4Edge()
-		if doubleCrossEdges != nil {
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, dGEdges...)
-			tempEdges = append(tempEdges, doubleCrossEdges...)
-			ees = append(ees, tempEdges)
-		}
+
 		for _, e := range es {
 			tempEdges := []*Edge{}
 			tempEdges = append(tempEdges, preEdges...)
 			tempEdges = append(tempEdges, e)
 			ees = append(ees, tempEdges)
 		}
+		if doubleCrossEdges != nil {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, dGEdges...)
+			tempEdges = append(tempEdges, doubleCrossEdges...)
+			ees = append(ees, tempEdges)
+		}
 	case b.Turn < TurnMark2:
 		es, isHave2FEdge := nB.GetSafeAndChain12Edge()
 		if isHave2FEdge {
-			if doubleCrossEdges != nil {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, dGEdges...)
-				tempEdges = append(tempEdges, doubleCrossEdges...)
-				ees = append(ees, tempEdges)
-			}
+
 			for _, e := range es {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, preEdges...)
 				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
 		} else {
@@ -1553,16 +1555,17 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	default:
 		es, isHave2FEdge := nB.GetSafeAndAllChainEdge()
 		if isHave2FEdge {
-			if doubleCrossEdges != nil {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, dGEdges...)
-				tempEdges = append(tempEdges, doubleCrossEdges...)
-				ees = append(ees, tempEdges)
-			}
+
 			for _, e := range es {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, preEdges...)
 				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+			if doubleCrossEdges != nil {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, dGEdges...)
+				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
 		} else {
