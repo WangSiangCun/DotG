@@ -208,7 +208,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	ees := eB.GetMove()
 
 	maxL := min(len(ees), MaxChild)
-	nN.UnTriedMove = make([]Untry, maxL)
+	nN.UnTriedMove = make([]Untry, len(ees))
 
 	//启发式, 在这里调整权值
 	if isHeuristic && n.Parents != nil {
@@ -231,7 +231,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 	} else {
 		for i := 0; i < maxL; i++ {
 			//fmt.Println(i, len(ees)-1-i, maxL, len(ees))
-			nN.UnTriedMove[i].m = board.EdgesToM(ees[len(ees)-1-i]...)
+			nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
 		}
 	}
 	nN.UnTriedMove = nN.UnTriedMove[:maxL]
