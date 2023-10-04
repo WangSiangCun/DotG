@@ -54,11 +54,11 @@ func Test() {
 	for {
 		b := board.NewBoard()
 		for b.Status() == 0 {
-			uct.Move(b, 2, false, isH)
+			uct.Move(b, 3, true, isH)
 			if b.Status() != 0 {
 				break
 			}
-			uct.Move(b, 2, false, !isH)
+			uct.Move(b, 3, true, !isH)
 		}
 
 		if b.Status() == 1 {
