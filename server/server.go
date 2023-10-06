@@ -74,7 +74,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			record.SetB(str[3])
 
 			if AITurn == 1 {
-				es := uct.Move(b, 1, true, false)
+				es := uct.Move(b, 1, true)
 				fmt.Println(es)
 				sendEdges(conn, es)
 
@@ -101,7 +101,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				record.PrintContentBack()
 				record.WriteToFile(b)
 			}
-			es = uct.Move(b, 1, true, false)
+			es = uct.Move(b, 1, true)
 			sendEdges(conn, es)
 			//发送消息后游戏结束
 			if b.Status() != 0 {

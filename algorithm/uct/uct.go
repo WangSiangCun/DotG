@@ -54,7 +54,7 @@ func (n *UCTNode) GetUCB() float64 {
 	}
 	return float64(n.Win)/float64(n.Visit) + C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
-func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
+func Move(b *board.Board, mode int, isV bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
 	//固定先手开局
@@ -63,7 +63,7 @@ func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
 	} else {
 		ees := b.GetFrontMoveByTurn()
 		if ees != nil {
-			es = Search(b, mode, isV, isHeuristic)
+			es = Search(b, mode, isV)
 		} else if ees == nil {
 			es = b.GetEndMove()
 		}
@@ -134,6 +134,26 @@ func GetBestChild(n *UCTNode, isV bool) *UCTNode {
 	}
 	return bestN
 }
+func GetBestChildByMV(n *UCTNode, isV bool) *UCTNode {
+	//如果游戏已经结束
+	var bestN *UCTNode
+	var bestWV float64
+	bestWV = math.MinInt32
+	for i := 0; i < len(n.Children); i++ {
+		wv := float64(n.Children[i].Win) / float64(n.Children[i].Visit)
+		if isV {
+			fmt.Printf("  w/v: %v v:%v move:%v \n", float64(n.Children[i].Win)/float64(n.Children[i].Visit), n.Children[i].Visit, n.Children[i].LastMove)
+		}
+		if wv > bestWV {
+			bestWV = wv
+			bestN = n.Children[i]
+		}
+	}
+	if isV {
+		fmt.Printf("Select:\n  w/v: %.4f Child: %d C: %v\n", float64(bestN.Win)/float64(bestN.Visit), len(n.Children), C)
+	}
+	return bestN
+}
 func SelectBest(n *UCTNode) (next *UCTNode) {
 	n.rwMutex.RLock()
 	defer n.rwMutex.RUnlock()
@@ -166,7 +186,7 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 	}
 
 }
-func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
+func Expand(n *UCTNode) *UCTNode {
 	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
 	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
 	//这时候就会出现问题
@@ -203,9 +223,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		}
 		maxL := min(len(ees), MaxChild)
 		n.UnTriedMove = ees[:maxL]
-		rand.Shuffle(len(n.UnTriedMove), func(i, j int) {
-			n.UnTriedMove[i], n.UnTriedMove[j] = n.UnTriedMove[j], n.UnTriedMove[i]
-		})
+		Shuffle(n.UnTriedMove)
 		//fmt.Println(ees)
 		//fmt.Println(n.UnTriedMove)
 		//生产新结点
@@ -225,7 +243,7 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		return n
 	}
 }
-func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.Edge) {
+func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
 		runtime.GC()
 	}
@@ -265,7 +283,7 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 				}
 
 				//扩展
-				nowN = Expand(nowN, isHeuristic)
+				nowN = Expand(nowN)
 
 				res = Simulation(nowN.B)
 
@@ -281,7 +299,7 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
 	}
-	bestChild := GetBestChild(root, isV)
+	bestChild := GetBestChildByMV(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
 		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -299,9 +317,9 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 func AdjustUCB(b *board.Board) {
 	switch {
 	case b.Turn <= 11:
-		C = math.Sqrt(2.0) * 0.80
-	case b.Turn <= 13:
 		C = math.Sqrt(2.0) * 0.70
+	case b.Turn <= 13:
+		C = math.Sqrt(2.0) * 0.65
 	case b.Turn <= 15:
 		C = math.Sqrt(2.0) * 0.60
 	case b.Turn <= 17:
@@ -309,11 +327,11 @@ func AdjustUCB(b *board.Board) {
 	case b.Turn <= 19:
 		C = math.Sqrt(2.0) * 0.45
 	case b.Turn <= 23:
-		C = math.Sqrt(2.0) * 0.40
-	case b.Turn <= 27:
-		C = math.Sqrt(2.0) * 0.35
-	case b.Turn <= 31:
 		C = math.Sqrt(2.0) * 0.30
+	case b.Turn <= 27:
+		C = math.Sqrt(2.0) * 0.25
+	case b.Turn <= 31:
+		C = math.Sqrt(2.0) * 0.20
 	default:
 		C = math.Sqrt(2.0) * 0.20
 	}
@@ -375,4 +393,10 @@ func getIndent(depth int) string {
 		indent += "\t"
 	}
 	return indent
+}
+func Shuffle(arr [][]*board.Edge) [][]*board.Edge {
+	for i, j := range rand.Perm(len(arr)) {
+		arr[i], arr[j] = arr[j], arr[i]
+	}
+	return arr
 }

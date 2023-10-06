@@ -68,14 +68,7 @@ func TestEdgesToM(t *testing.T) {
 	es = MtoEdges(M)
 	fmt.Println(es)
 }
-func TestBoard_GetDGridEdges(t *testing.T) {
-	b := NewBoard()
-	b.MoveAndCheckout(&Edge{2, 7}, &Edge{3, 6}, &Edge{3, 8}, &Edge{3, 10}, &Edge{4, 9})
-	fmt.Println(b)
-	fmt.Println(b.GetDGridEdges())
-	_, f1 := b.Get2FEdgeAndMessage()
-	fmt.Println(b.GetDGridEdgesByMessage(f1))
-}
+
 func TestBoard_GetEndMove1(t *testing.T) {
 	b := NewBoard()
 	b.State = [11][11]int{
@@ -110,36 +103,35 @@ func TestBoard_GetEndMove1(t *testing.T) {
 func TestBoard_GetEndMove2(t *testing.T) {
 	b := NewBoard()
 	b.State = [11][11]int{
-		{-1, 1, -1, 1, -1, 1, -1, 0, -1, 1, -1},
-		{0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0},
+		{-1, 1, -1, 0, -1, 1, -1, 1, -1, 1, -1},
+		{1, -2, 1, 2, 1, 1, 1, 1, 0, 2, 1},
 		{-1, 1, -1, 0, -1, 0, -1, 1, -1, 0, -1},
-		{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-		{-1, 0, -1, 0, -1, 1, -1, 1, -1, 1, -1},
-		{0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1},
+		{1, -2, 1, 2, 1, 2, 0, 2, 0, 2, 1},
+		{-1, 1, -1, 0, -1, 1, -1, 1, -1, 1, -1},
+		{0, 2, 0, 2, 1, -1, 1, 2, 0, 2, 0},
 		{-1, 1, -1, 1, -1, 1, -1, 0, -1, 1, -1},
-		{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1},
-		{-1, 1, -1, 1, -1, 1, -1, 0, -1, 1, -1},
-		{0, 0, 1, 2, 1, 2, 1, 0, 0, 0, 0},
-		{-1, 0, -1, 1, -1, 1, -1, 1, -1, 1, -1}}
+		{1, -1, 1, 2, 0, 2, 1, 2, 0, 2, 0},
+		{-1, 1, -1, 0, -1, 0, -1, 1, -1, 1, -1},
+		{1, -1, 1, 2, 1, 2, 1, -2, 1, -1, 1},
+		{-1, 1, -1, 0, -1, 0, -1, 1, -1, 1, -1}}
 	b.S[1] = 4
-	b.S[2] = 2
+	b.S[2] = 3
 	b.Now = 1
-	fmt.Println(b, b.Get2FEdge())
-
+	for i := 1; i < 11; i += 2 {
+		for j := 1; j < 11; j += 2 {
+			t := b.GetBoxType(i, j)
+			tempBoxX, tempBoxY := BoxToXY(i, j)
+			b.Boxes[tempBoxX*5+tempBoxY].Type = t
+		}
+	}
 	for b.Status() == 0 {
 		es := b.GetEndMove()
 		b.MoveAndCheckout(es...)
-		for i := 1; i < 11; i += 2 {
-			for j := 1; j < 11; j += 2 {
-				if b.State[i][j] == 2 {
-					t := b.GetBoxType(i, j)
-					tempBoxX, tempBoxY := BoxToXY(i, j)
-					b.Boxes[tempBoxX*5+tempBoxY].Type = t
-				}
-
-			}
-		}
-		fmt.Println(b)
+		fmt.Println(b, es, "-----------------")
 	}
 	fmt.Println(b)
+}
+func TestBoard_GetEndMove3(t *testing.T) {
+	b := NewBoard()
+	b.State = [11][11]int{}
 }

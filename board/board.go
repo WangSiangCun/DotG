@@ -1519,35 +1519,35 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	case b.Turn < TurnMark1:
 		//前几回合，只走三自由度
 		es := nB.GetSafeNo4Edge()
-
-		for _, e := range es {
-			tempEdges := []*Edge{}
-			tempEdges = append(tempEdges, preEdges...)
-			tempEdges = append(tempEdges, e)
-			ees = append(ees, tempEdges)
-		}
 		if doubleCrossEdges != nil {
 			tempEdges := []*Edge{}
 			tempEdges = append(tempEdges, dGEdges...)
 			tempEdges = append(tempEdges, doubleCrossEdges...)
 			ees = append(ees, tempEdges)
 		}
+		for _, e := range es {
+			tempEdges := []*Edge{}
+			tempEdges = append(tempEdges, preEdges...)
+			tempEdges = append(tempEdges, e)
+			ees = append(ees, tempEdges)
+		}
+
 	case b.Turn < TurnMark2:
 		es, isHave2FEdge := nB.GetSafeAndChain12Edge()
 		if isHave2FEdge {
-
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		} else {
 			return
 		}
@@ -1555,25 +1555,35 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	default:
 		es, isHave2FEdge := nB.GetSafeAndAllChainEdge()
 		if isHave2FEdge {
-
-			for _, e := range es {
-				tempEdges := []*Edge{}
-				tempEdges = append(tempEdges, preEdges...)
-				tempEdges = append(tempEdges, e)
-				ees = append(ees, tempEdges)
-			}
 			if doubleCrossEdges != nil {
 				tempEdges := []*Edge{}
 				tempEdges = append(tempEdges, dGEdges...)
 				tempEdges = append(tempEdges, doubleCrossEdges...)
 				ees = append(ees, tempEdges)
 			}
+			for _, e := range es {
+				tempEdges := []*Edge{}
+				tempEdges = append(tempEdges, preEdges...)
+				tempEdges = append(tempEdges, e)
+				ees = append(ees, tempEdges)
+			}
+
 		} else {
 			return
 		}
 
 	}
 	return
+}
+func (b *Board) GetEdge() *Edge {
+	for i := 0; i < 11; i++ {
+		for j := 0; j < 11; j++ {
+			if (i+j)&1 == 1 && b.State[i][j] == 0 {
+				return &Edge{i, j}
+			}
+		}
+	}
+	return nil
 }
 
 // GetEndMove 不存在安全边时的走法
@@ -1603,8 +1613,8 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			//有链
 			es = append(es, preEdges...)
 			es = append(es, edge)
-
 		}
+
 	} else {
 		//有死树
 		//全吃后走链
@@ -1614,6 +1624,18 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			es = append(es, preEdges...)
 			es = append(es, allEdges...)
 		} else {
+			//游戏没结束的直接吃的情况，分数已经够了
+			if nB.S[nB.Now] > 12 {
+				es = append(es, preEdges...)
+				es = append(es, allEdges...)
+				//全吃，吃完如果游戏没有结束随便走个边
+				if nB.Status() == 0 {
+					e := nB.GetEdge()
+					es = append(es, e)
+				}
+
+				return es
+			}
 
 			//是个环
 			criticalValue := 0
