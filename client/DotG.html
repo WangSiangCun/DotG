@@ -23,7 +23,7 @@
       </div>
       <button class="controllerButton" onclick="start()">开始</button>
     </div>
-    <BGSOUND id=1 balance=0 src="" loop="1">
+    <BGSOUND id=1 balance=0 src="" loop="1"/>
   </div>
 </div>
 <style>
@@ -425,7 +425,7 @@
 
       }
     }
-    if (!flag) {
+    if (!flag||status()!=0) {
       //socket发送moves
       //...
       var str = 'Moves-'
@@ -459,6 +459,7 @@
   }
   // 检查并更新格子的值
   function checkAndUpdateCellValue(row, col, color) {
+
     if (
       board[row - 1][col] == '1' &&
       board[row + 1][col] == '1' &&

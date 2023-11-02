@@ -101,6 +101,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 				record.PrintContentBack()
 				record.WriteToFile(b)
+				return
 			}
 			fmt.Println("思考中........")
 			es = uct.Move(b, 0, true)
@@ -112,6 +113,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
 				record.PrintContentBack()
 				record.WriteToFile(b)
+				return
 			}
 
 		}
