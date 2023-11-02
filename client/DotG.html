@@ -425,7 +425,7 @@
 
       }
     }
-    if (!flag) {
+    if (!flag||status()!=0) {
       //socket发送moves
       //...
       var str = 'Moves-'
@@ -459,6 +459,7 @@
   }
   // 检查并更新格子的值
   function checkAndUpdateCellValue(row, col, color) {
+
     if (
       board[row - 1][col] == '1' &&
       board[row + 1][col] == '1' &&

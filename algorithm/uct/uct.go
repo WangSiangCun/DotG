@@ -204,6 +204,9 @@ func Expand(n *UCTNode) *UCTNode {
 		es := n.UnTriedMove[0]
 		nB := board.CopyBoard(n.B)
 		nB.MoveAndCheckout(es...)
+		if nB.Now == n.B.Now {
+			fmt.Println(n.B, nB, es)
+		}
 		nN := NewUCTNode(nB)
 		nN.Parents = n
 		nN.LastMove = es
@@ -304,15 +307,15 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	bestChild := GetBestChildByMV(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
-		//file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		//if err != nil {
-		//	fmt.Println("Error opening file:", err)
-		//	return
-		//}
+		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return
+		}
 
-		//fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-		//printTree(root, 0, file)
-		//file.Close()
+		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		printTree(root, 0, file)
+		file.Close()
 	}
 	return bestChild.LastMove
 }
