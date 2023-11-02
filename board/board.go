@@ -453,6 +453,11 @@ func (b *Board) MoveAndCheckoutForPrint(edges ...*Edge) (isOc bool) {
 func (b *Board) RandomMoveByCheck() (edge [][]*Edge) {
 	ees := b.GetMove()
 	if ees == nil {
+		for b.Status() == 0 {
+			endMoves := b.GetEndMove()
+			b.MoveAndCheckout(endMoves...)
+		}
+
 		return nil
 	}
 	randInt := rand.Intn(len(ees))
@@ -1684,12 +1689,7 @@ func (b *Board) GetMove() (ees [][]*Edge) {
 	if len(ees) > 0 {
 		return ees
 	} else {
-		//不存在安全边
-		for b.Status() == 0 {
-			endMoves := b.GetEndMove()
-			b.MoveAndCheckout(endMoves...)
-		}
-		return nil
 
+		return nil
 	}
 }

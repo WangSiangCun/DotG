@@ -108,10 +108,9 @@ func Simulation(b *board.Board) (res int) {
 	nB := board.CopyBoard(b)
 	for nB.Status() == 0 {
 		nB.RandomMoveByCheck()
-
 	}
-	res = nB.Status()
-	return res
+	//fmt.Println(nB)
+	return nB.Status()
 
 }
 func GetBestChild(n *UCTNode, isV bool) *UCTNode {
@@ -224,6 +223,7 @@ func Expand(n *UCTNode) *UCTNode {
 		if len(ees) == 0 {
 			return n
 		}
+
 		maxL := min(len(ees), MaxChild)
 		//打乱
 		Shuffle(ees)
@@ -235,6 +235,7 @@ func Expand(n *UCTNode) *UCTNode {
 		es := n.UnTriedMove[0]
 		nB := board.CopyBoard(n.B)
 		nB.MoveAndCheckout(es...)
+
 		nN := NewUCTNode(nB)
 		nN.Parents = n
 		nN.LastMove = n.UnTriedMove[0]
@@ -388,6 +389,8 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 		TimeLimit = 20
 	} else if mode == 3 {
 		TimeLimit = 2
+	} else if mode == 4 {
+		TimeLimit = 10
 	}
 
 }

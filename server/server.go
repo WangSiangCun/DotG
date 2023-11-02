@@ -74,7 +74,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			record.SetB(str[3])
 
 			if AITurn == 1 {
-				es := uct.Move(b, 0, true)
+				es := uct.Move(b, 1, true)
 				fmt.Println(es)
 				sendEdges(conn, es)
 
@@ -104,7 +104,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			fmt.Println("思考中........")
-			es = uct.Move(b, 0, true)
+			es = uct.Move(b, 1, true)
 
 			sendEdges(conn, es)
 			fmt.Println("已发送")
