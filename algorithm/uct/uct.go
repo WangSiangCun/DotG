@@ -8,8 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
-	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -22,20 +20,10 @@ type UCTNode struct {
 	Parents     *UCTNode
 	Visit       int
 	Win         int //0 无，1 ，2
-	UnTriedMove []Untry
-	LastMove    int64
+	UnTriedMove [][]*board.Edge
+	LastMove    []*board.Edge
 	rwMutex     sync.RWMutex
 }
-type Untry struct {
-	m   int64
-	val float64
-}
-
-type ByX []Untry
-
-func (self ByX) Len() int           { return len(self) }
-func (self ByX) Swap(i, j int)      { self[i], self[j] = self[j], self[i] }
-func (self ByX) Less(i, j int) bool { return self[i].val > self[j].val }
 
 type HashKey struct {
 	M   [2]uint64
@@ -66,7 +54,7 @@ func (n *UCTNode) GetUCB() float64 {
 	}
 	return float64(n.Win)/float64(n.Visit) + C*math.Sqrt(math.Log(float64(n.Parents.Visit))/float64(n.Visit))
 }
-func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
+func Move(b *board.Board, mode int, isV bool) []*board.Edge {
 	start := time.Now()
 	es := []*board.Edge{}
 	//固定先手开局
@@ -75,7 +63,7 @@ func Move(b *board.Board, mode int, isV bool, isHeuristic bool) []*board.Edge {
 	} else {
 		ees := b.GetFrontMoveByTurn()
 		if ees != nil {
-			es = Search(b, mode, isV, isHeuristic)
+			es = Search(b, mode, isV)
 		} else if ees == nil {
 			es = b.GetEndMove()
 		}
@@ -110,8 +98,8 @@ func NewUCTNode(b *board.Board) *UCTNode {
 		Parents:     nil,
 		Visit:       0,
 		Win:         0,
-		UnTriedMove: ByX{},
-		LastMove:    int64(0),
+		UnTriedMove: [][]*board.Edge{},
+		LastMove:    []*board.Edge{},
 		rwMutex:     sync.RWMutex{},
 	}
 }
@@ -120,6 +108,7 @@ func Simulation(b *board.Board) (res int) {
 	nB := board.CopyBoard(b)
 	for nB.Status() == 0 {
 		nB.RandomMoveByCheck()
+
 	}
 	res = nB.Status()
 	return res
@@ -133,7 +122,7 @@ func GetBestChild(n *UCTNode, isV bool) *UCTNode {
 	for i := 0; i < len(n.Children); i++ {
 		cUCB := n.Children[i].GetUCB()
 		if isV {
-			fmt.Printf("ucb: %v   w/v: %v v:%v move:%v \n", cUCB, float64(n.Children[i].Win)/float64(n.Children[i].Visit), n.Children[i].Visit, board.MtoEdges(n.Children[i].LastMove))
+			fmt.Printf("ucb: %v   w/v: %v v:%v move:%v \n", cUCB, float64(n.Children[i].Win)/float64(n.Children[i].Visit), n.Children[i].Visit, n.Children[i].LastMove)
 		}
 		if cUCB > bestUCB {
 			bestUCB = cUCB
@@ -142,6 +131,26 @@ func GetBestChild(n *UCTNode, isV bool) *UCTNode {
 	}
 	if isV {
 		fmt.Printf("Select:\n UCB:%.4f  w/v: %.4f Child: %d C: %v\n", bestUCB, float64(bestN.Win)/float64(bestN.Visit), len(n.Children), C)
+	}
+	return bestN
+}
+func GetBestChildByMV(n *UCTNode, isV bool) *UCTNode {
+	//如果游戏已经结束
+	var bestN *UCTNode
+	var bestWV float64
+	bestWV = math.MinInt32
+	for i := 0; i < len(n.Children); i++ {
+		wv := float64(n.Children[i].Win) / float64(n.Children[i].Visit)
+		if isV {
+			fmt.Printf("  w/v: %v v:%v move:%v \n", float64(n.Children[i].Win)/float64(n.Children[i].Visit), n.Children[i].Visit, n.Children[i].LastMove)
+		}
+		if wv > bestWV {
+			bestWV = wv
+			bestN = n.Children[i]
+		}
+	}
+	if isV {
+		fmt.Printf("Select:\n  w/v: %.4f Child: %d C: %v\n", float64(bestN.Win)/float64(bestN.Visit), len(n.Children), C)
 	}
 	return bestN
 }
@@ -177,7 +186,7 @@ func SelectBest(n *UCTNode) (next *UCTNode) {
 	}
 
 }
-func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
+func Expand(n *UCTNode) *UCTNode {
 	//routine1的Select1 进行选择，此时未扩展完，而routine2的select2因为同时和select1读到未扩展完，
 	//而2或1的expand先扩展，另一个堵塞后再去扩展发现已经被扩展，
 	//这时候就会出现问题
@@ -187,60 +196,56 @@ func Expand(n *UCTNode, isHeuristic bool) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	//n.Visit和启发式的效果挂钩
-	if n.Visit < 20 {
-		return n
-	}
-	if len(n.UnTriedMove) == 0 {
-		return n
-	}
 
-	//生产新结点
-	es := board.MtoEdges(n.UnTriedMove[0].m)
-	nB := board.CopyBoard(n.B)
-	nB.MoveAndCheckout(es...)
-	nN := NewUCTNode(nB)
-	nN.Parents = n
-	nN.LastMove = n.UnTriedMove[0].m
-	//初始化新节点
-	eB := board.CopyBoard(nN.B)
-	ees := eB.GetMove()
+	if len(n.UnTriedMove) != 0 {
+		///已扩展，未扩展完毕
 
-	maxL := min(len(ees), MaxChild)
-	nN.UnTriedMove = make([]Untry, len(ees))
+		//生产新结点
+		es := n.UnTriedMove[0]
+		nB := board.CopyBoard(n.B)
+		nB.MoveAndCheckout(es...)
+		nN := NewUCTNode(nB)
+		nN.Parents = n
+		nN.LastMove = es
+		//初始化后，将nN加入n的子节点
+		n.Children = append(n.Children, nN)
+		//fmt.Println(len(n.Children))
+		n.UnTriedMove = n.UnTriedMove[1:]
 
-	//启发式, 在这里调整权值
-	if isHeuristic && n.Parents != nil {
-		rew := map[string]float64{}
-		for i, _ := range n.Parents.Children {
-			rew[strconv.FormatInt(n.Parents.Children[i].LastMove, 10)] = 1 - (float64(n.Parents.Children[i].Win) / float64(n.Parents.Children[i].Visit))
+		//fmt.Println(n.UnTriedMove)
+		return nN
+
+	} else if len(n.UnTriedMove) == 0 && len(n.Children) == 0 {
+		//未扩展
+		ees := n.B.GetMove()
+		if len(ees) == 0 {
+			return n
 		}
-
-		for i, un := range nN.UnTriedMove {
-			un.m = board.EdgesToM(ees[i]...)
-			if rew[strconv.FormatInt(un.m, 10)] > 0 {
-				un.val = rew[strconv.FormatInt(un.m, 10)]
-				//fmt.Println(un.val)
-			} else {
-				un.val = 0.61 + rand.Float64()*1e-8
-			}
-		}
-
-		sort.Sort(ByX(nN.UnTriedMove))
+		maxL := min(len(ees), MaxChild)
+		//打乱
+		Shuffle(ees)
+		//只要前maxL个
+		n.UnTriedMove = ees[:maxL]
+		//fmt.Println(ees)
+		//fmt.Println(n.UnTriedMove)
+		//生产新结点
+		es := n.UnTriedMove[0]
+		nB := board.CopyBoard(n.B)
+		nB.MoveAndCheckout(es...)
+		nN := NewUCTNode(nB)
+		nN.Parents = n
+		nN.LastMove = n.UnTriedMove[0]
+		//初始化后，将nN加入n的子节点
+		n.Children = append(n.Children, nN)
+		n.UnTriedMove = n.UnTriedMove[1:]
+		return nN
 	} else {
-		for i := 0; i < len(ees); i++ {
-			nN.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-		}
+		//避免并发问题
+		//fmt.Println(n.UnTriedMove, n.B.Status())
+		return n
 	}
-	nN.UnTriedMove = nN.UnTriedMove[:maxL]
-	nN.Children = make([]*UCTNode, 0, len(nN.UnTriedMove))
-	//初始化后，将nN加入n的子节点
-	n.Children = append(n.Children, nN)
-	n.UnTriedMove = n.UnTriedMove[1:]
-
-	return nN
 }
-func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.Edge) {
+func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	if b.Turn <= 1 {
 		runtime.GC()
 	}
@@ -251,21 +256,12 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 	MaxDeep = 0
 	root := NewUCTNode(b)
 
-	eB := board.CopyBoard(root.B)
-	ees := eB.GetMove()
-	maxL := min(len(ees), MaxChild)
-	root.UnTriedMove = make([]Untry, len(ees))
-	for i := 0; i < len(ees); i++ {
-		root.UnTriedMove[i].m = board.EdgesToM(ees[i]...)
-	}
-	root.UnTriedMove = root.UnTriedMove[:maxL]
-	root.Children = make([]*UCTNode, 0, len(root.UnTriedMove))
-
 	start := time.Now()
 	res := 0
 	AdjustUCB(b)
 	AdjustMaxChild(b)
 	AdjustTimeLimit(b, mode)
+
 	for i := 0; i < ThreadNum; i++ {
 		go func() {
 
@@ -289,7 +285,7 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 				}
 
 				//扩展
-				nowN = Expand(nowN, isHeuristic)
+				nowN = Expand(nowN)
 
 				res = Simulation(nowN.B)
 
@@ -305,27 +301,27 @@ func Search(b *board.Board, mode int, isV bool, isHeuristic bool) (es []*board.E
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
 	}
-	bestChild := GetBestChild(root, isV)
+	bestChild := GetBestChildByMV(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
-		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println("Error opening file:", err)
-			return
-		}
+		//file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		//if err != nil {
+		//	fmt.Println("Error opening file:", err)
+		//	return
+		//}
 
-		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-		printTree(root, 0, file)
-		file.Close()
+		//fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		//printTree(root, 0, file)
+		//file.Close()
 	}
-	return board.MtoEdges(bestChild.LastMove)
+	return bestChild.LastMove
 }
 func AdjustUCB(b *board.Board) {
 	switch {
 	case b.Turn <= 11:
-		C = math.Sqrt(2.0) * 0.80
-	case b.Turn <= 13:
 		C = math.Sqrt(2.0) * 0.70
+	case b.Turn <= 13:
+		C = math.Sqrt(2.0) * 0.65
 	case b.Turn <= 15:
 		C = math.Sqrt(2.0) * 0.60
 	case b.Turn <= 17:
@@ -333,11 +329,11 @@ func AdjustUCB(b *board.Board) {
 	case b.Turn <= 19:
 		C = math.Sqrt(2.0) * 0.45
 	case b.Turn <= 23:
-		C = math.Sqrt(2.0) * 0.40
-	case b.Turn <= 27:
-		C = math.Sqrt(2.0) * 0.35
-	case b.Turn <= 31:
 		C = math.Sqrt(2.0) * 0.30
+	case b.Turn <= 27:
+		C = math.Sqrt(2.0) * 0.25
+	case b.Turn <= 31:
+		C = math.Sqrt(2.0) * 0.20
 	default:
 		C = math.Sqrt(2.0) * 0.20
 	}
@@ -355,7 +351,22 @@ func AdjustMaxChild(b *board.Board) {
 	}
 }
 func AdjustTimeLimit(b *board.Board, mode int) {
-	if mode == 1 {
+	if mode == 0 {
+		switch {
+		case b.Turn <= 7:
+			TimeLimit = 20
+		case b.Turn <= 10:
+			TimeLimit = 25
+		case b.Turn <= 15:
+			TimeLimit = 40
+		case b.Turn <= 20:
+			TimeLimit = 60
+		case b.Turn <= 25:
+			TimeLimit = 40
+		default:
+			TimeLimit = 10
+		}
+	} else if mode == 1 {
 		switch {
 		case b.Turn <= 7:
 			TimeLimit = 15
@@ -386,7 +397,7 @@ func min(a, b int) int {
 }
 
 func printTree(node *UCTNode, depth int, writer *os.File) {
-	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, board.MtoEdges(node.LastMove))
+	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, node.LastMove)
 
 	for _, child := range node.Children {
 		printTree(child, depth+1, writer)
@@ -399,4 +410,10 @@ func getIndent(depth int) string {
 		indent += "\t"
 	}
 	return indent
+}
+func Shuffle(arr [][]*board.Edge) [][]*board.Edge {
+	for i, j := range rand.Perm(len(arr)) {
+		arr[i], arr[j] = arr[j], arr[i]
+	}
+	return arr
 }

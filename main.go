@@ -12,14 +12,13 @@ func AIToAI() {
 	b := board.NewBoard()
 
 	for b.Status() == 0 {
-		uct.Move(b, 2, true, true)
+		uct.Move(b, 2, true)
 
 		if b.Status() != 0 {
 			break
 		}
 
-		uct.Move(b, 2, true, false)
-
+		uct.Move(b, 2, true)
 	}
 	record.SetR("RRRR")
 	record.SetB("BBBB")
@@ -39,7 +38,7 @@ func PToAI() {
 	playerTurn ^= 3
 	for b.Status() == 0 {
 
-		uct.Move(b, 1, true, false)
+		uct.Move(b, 1, true)
 
 		if b.Status() != 0 {
 			break
@@ -54,34 +53,31 @@ func Test() {
 	for {
 		b := board.NewBoard()
 		for b.Status() == 0 {
-			uct.Move(b, 2, true, false)
+			uct.Move(b, 3, true)
 			if b.Status() != 0 {
 				break
 			}
-			uct.Move(b, 2, true, false)
+			uct.Move(b, 3, true)
 		}
-
 		if b.Status() == 1 {
 			score1++
 		} else {
-
 			score2++
 		}
-		fmt.Println(score1, score2, "---------------------------------------------------------")
 	}
 }
 func FastAI() {
 	b := board.NewBoard()
 	for b.Status() == 0 {
 		//uct.Move(b, 100, 20000, 1)
-		uct.Move(b, 3, true, false)
+		uct.Move(b, 3, true)
 
 		if b.Status() != 0 {
 			break
 		}
 		//-----------------------------------------1
 		//uct.Move(b, 100, 10000, 1)
-		uct.Move(b, 3, true, false)
+		uct.Move(b, 3, true)
 
 	}
 	record.SetR("RRRR")
