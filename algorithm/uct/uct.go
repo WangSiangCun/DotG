@@ -222,8 +222,10 @@ func Expand(n *UCTNode) *UCTNode {
 			return n
 		}
 		maxL := min(len(ees), MaxChild)
+		//打乱
+		Shuffle(ees)
+		//只要前maxL个
 		n.UnTriedMove = ees[:maxL]
-		Shuffle(n.UnTriedMove)
 		//fmt.Println(ees)
 		//fmt.Println(n.UnTriedMove)
 		//生产新结点
@@ -302,15 +304,15 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	bestChild := GetBestChildByMV(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
-		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println("Error opening file:", err)
-			return
-		}
+		//file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		//if err != nil {
+		//	fmt.Println("Error opening file:", err)
+		//	return
+		//}
 
-		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-		printTree(root, 0, file)
-		file.Close()
+		//fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		//printTree(root, 0, file)
+		//file.Close()
 	}
 	return bestChild.LastMove
 }
@@ -349,7 +351,22 @@ func AdjustMaxChild(b *board.Board) {
 	}
 }
 func AdjustTimeLimit(b *board.Board, mode int) {
-	if mode == 1 {
+	if mode == 0 {
+		switch {
+		case b.Turn <= 7:
+			TimeLimit = 20
+		case b.Turn <= 10:
+			TimeLimit = 25
+		case b.Turn <= 15:
+			TimeLimit = 40
+		case b.Turn <= 20:
+			TimeLimit = 60
+		case b.Turn <= 25:
+			TimeLimit = 40
+		default:
+			TimeLimit = 10
+		}
+	} else if mode == 1 {
 		switch {
 		case b.Turn <= 7:
 			TimeLimit = 15

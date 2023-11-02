@@ -74,7 +74,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			record.SetB(str[3])
 
 			if AITurn == 1 {
-				es := uct.Move(b, 1, true)
+				es := uct.Move(b, 0, true)
 				fmt.Println(es)
 				sendEdges(conn, es)
 
@@ -91,7 +91,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				j, _ := strconv.Atoi(ij[1])
 				es = append(es, &board.Edge{i, j})
 			}
-			fmt.Println(es)
+			fmt.Println("对方走法:  ", es)
+
 			record.PrintContentMiddle(b, es)
 			b.MoveAndCheckout(es...)
 
@@ -101,8 +102,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				record.PrintContentBack()
 				record.WriteToFile(b)
 			}
-			es = uct.Move(b, 1, true)
+			fmt.Println("思考中........")
+			es = uct.Move(b, 0, true)
+
 			sendEdges(conn, es)
+			fmt.Println("已发送")
 			//发送消息后游戏结束
 			if b.Status() != 0 {
 				record.PrintContentStart(b.S[1], b.S[2], time.Now().String())
