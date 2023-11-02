@@ -195,6 +195,9 @@ func Expand(n *UCTNode) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
+	if n.Visit < 15 {
+		return n
+	}
 
 	if len(n.UnTriedMove) != 0 {
 		///已扩展，未扩展完毕
@@ -306,15 +309,15 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	bestChild := GetBestChild(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
-		//file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		//if err != nil {
-		//	fmt.Println("Error opening file:", err)
-		//	return
-		//}
+		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("Error opening file:", err)
+			return
+		}
 
-		//fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-		//printTree(root, 0, file)
-		//file.Close()
+		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		printTree(root, 0, file)
+		file.Close()
 	}
 	return bestChild.LastMove
 }
@@ -356,15 +359,15 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 	if mode == 0 {
 		switch {
 		case b.Turn <= 7:
-			TimeLimit = 20
+			TimeLimit = 27
 		case b.Turn <= 10:
-			TimeLimit = 25
+			TimeLimit = 35
 		case b.Turn <= 15:
-			TimeLimit = 40
+			TimeLimit = 45
 		case b.Turn <= 20:
 			TimeLimit = 60
 		case b.Turn <= 25:
-			TimeLimit = 40
+			TimeLimit = 30
 		default:
 			TimeLimit = 10
 		}
