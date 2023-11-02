@@ -303,18 +303,18 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	for i := 0; i < ThreadNum; i++ {
 		<-exit
 	}
-	bestChild := GetBestChildByMV(root, isV)
+	bestChild := GetBestChild(root, isV)
 	if isV {
 		fmt.Printf("Tatal:%d \n MaxDeep:%d\n SimRate:%v\n", root.Visit, MaxDeep, float64(bestChild.Visit)/float64(root.Visit))
-		file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			fmt.Println("Error opening file:", err)
-			return
-		}
+		//file, err := os.OpenFile("uctNodeTree.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		//if err != nil {
+		//	fmt.Println("Error opening file:", err)
+		//	return
+		//}
 
-		fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-		printTree(root, 0, file)
-		file.Close()
+		//fmt.Fprintf(file, "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+		//printTree(root, 0, file)
+		//file.Close()
 	}
 	return bestChild.LastMove
 }
