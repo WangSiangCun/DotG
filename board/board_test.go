@@ -133,5 +133,32 @@ func TestBoard_GetEndMove2(t *testing.T) {
 }
 func TestBoard_GetEndMove3(t *testing.T) {
 	b := NewBoard()
-	b.State = [11][11]int{}
+	b.State = [11][11]int{
+		{-1, 1, -1, 0, -1, 0, -1, 1, -1, 1, -1},
+		{1, -1, 1, 2, 1, 2, 1, 2, 0, 2, 1},
+		{-1, 1, -1, 0, -1, 0, -1, 0, -1, 0, -1},
+		{0, 2, 0, 2, 1, 2, 0, 2, 1, 2, 0},
+		{-1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1},
+		{1, 2, 0, 2, 0, 2, 1, 2, 0, 2, 1},
+		{-1, 0, -1, 1, -1, 0, -1, 0, -1, 0, -1},
+		{0, 2, 1, -1, 1, 2, 1, 2, 1, 2, 1},
+		{-1, 1, -1, 1, -1, 0, -1, 0, -1, 0, -1},
+		{1, -1, 1, -1, 1, 2, 1, 2, 0, 2, 1},
+		{-1, 1, -1, 1, -1, 0, -1, 1, -1, 1, -1}}
+	b.S[1] = 4
+	b.S[2] = 0
+	b.Now = 2
+	for i := 1; i < 11; i += 2 {
+		for j := 1; j < 11; j += 2 {
+			t := b.GetBoxType(i, j)
+			tempBoxX, tempBoxY := BoxToXY(i, j)
+			b.Boxes[tempBoxX*5+tempBoxY].Type = t
+		}
+	}
+	for b.Status() == 0 {
+		es := b.GetEndMove()
+		b.MoveAndCheckout(es...)
+		fmt.Println(b, es, "-----------------")
+	}
+	fmt.Println(b)
 }

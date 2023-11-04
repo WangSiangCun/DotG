@@ -1630,7 +1630,7 @@ func (b *Board) GetEndMove() (es []*Edge) {
 			es = append(es, allEdges...)
 		} else {
 			//游戏没结束的直接吃的情况，分数已经够了
-			if nB.S[nB.Now] > 12 {
+			if nB.S[nB.Now^3] > 12 {
 				es = append(es, preEdges...)
 				es = append(es, allEdges...)
 				//全吃，吃完如果游戏没有结束随便走个边

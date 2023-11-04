@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>点格棋</title>
+<div id="main">
+  <div id="chessboard"></div>
+  <div id="pannel">
+
+    <div id="messages">
+
+    </div>
+    <div id="controller">
+      <h1 class="title">DotG</h1>
+      <div>
+        <button class="controllerButton" onclick="setAITurn(1)">此AI先手</button>
+        <button class="controllerButton" onclick="setAITurn(2)">此AI后手</button>
+      </div>
+      <div>
+        <input id="RName" type="text" placeholder="先手方名称">
+        <input id="BName" type="text" placeholder="后手方名称">
+      </div>
+      <button class="controllerButton" onclick="start()">开始</button>
+    </div>
+    <BGSOUND id=1 balance=0 src="" loop="1"/>
+  </div>
+</div>
+<style>
+  #main {
+    background-color: cornsilk;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+  }
+
+  #chessboard {
+    width: 620px;
+    height: 620px;
+    background-color: rgba(102, 146, 191, 0.44);
+    /*边框*/
+    border: solid 10px rgba(102, 146, 191, 0.68);
+    /*边角弧度*/
+    border-radius: 10px;
+    /*阴影*/
+    -moz-box-shadow: 2px 2px 5px #333333;
+    -webkit-box-shadow: 2px 2px 5px #333333;
+    box-shadow: 7px 15px 30px #285a63;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+    display: none
+  }
+
+  #pannel {
+    float: left;
+    text-align: center;
+    height: 50%;
+    margin: 40px;
+  }
+
+  #controller {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+    background-color: rgba(102, 146, 191, 0.44);
+    /*边框*/
+    border: solid 1px rgba(102, 146, 191, 0.68);
+    /*边角弧度*/
+    width: 300px;
+    height: 500px;
+    border-radius: 10px;
+    /*阴影*/
+    -moz-box-shadow: 2px 2px 5px #333333;
+    -webkit-box-shadow: 2px 2px 5px #333333;
+    box-shadow: 7px 15px 30px #285a63;
+  }
+
+  #messages {
+    float: left;
+    margin: 40px;
+    color: #4d2c2c;
+    font-size: large;
+    font-family: Arial, Helvetica, sans-serif;
+    position: absolute;
+    top: 10%;
+    bottom: 0;
+    left: 0%;
+    right: 0;
+    margin: 0;
+    text-align: center;
+
+    background-color: rgba(175, 175, 175, 0.44);
+    /*边框*/
+    border: solid 5px rgba(102, 146, 191, 0.68);
+    /*边角弧度*/
+    width: 200px;
+    line-height: 100px;
+    height: 100px;
+    border-radius: 10px;
+    display: none;
+    /*阴影*/
+    -moz-box-shadow: 2px 2px 5px #333333;
+    -webkit-box-shadow: 2px 2px 5px #333333;
+    box-shadow: 7px 15px 30px #285a63;
+  }
+
+  .dot {
+    background-color: black;
+    /* 设置点的颜色 */
+    border-radius: 50%;
+    /* 将点的形状设为圆形 */
+    width: 20px;
+    height: 20px;
+    float: left;
+  }
+
+  .hEdge {
+    background-color: rgb(255, 255, 255);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    height: 20px;
+    width: 100px;
+    float: left;
+  }
+
+  .vEdge {
+    background-color: rgb(255, 255, 255);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    float: left;
+    width: 20px;
+    height: 100px;
+
+  }
+
+  .hEdge_Clicked {
+    background-color: rgb(0, 0, 0);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    height: 20px;
+    width: 100px;
+    float: left;
+  }
+
+  .vEdge_Clicked {
+    background-color: rgb(0, 0, 0);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    float: left;
+    width: 20px;
+    height: 100px;
+
+  }
+
+
+  .hEdge_Clicked_lastmove {
+    background-color: rgb(0, 255, 170);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    height: 20px;
+    width: 100px;
+    float: left;
+  }
+
+  .vEdge_Clicked_lastmove {
+    background-color: rgb(0, 255, 170);
+    /* 设置边的颜色 */
+    cursor: pointer;
+    /* 设置指针样式 */
+    float: left;
+    width: 20px;
+    height: 100px;
+
+  }
+
+
+  .vEdge:hover {
+    background-color: orange;
+    float: left;
+    width: 20px;
+    height: 100px;
+  }
+
+  .hEdge:hover {
+    background-color: orange;
+    /* 设置鼠标悬停时的背景颜色 */
+    height: 20px;
+    width: 100px;
+    float: left;
+  }
+
+  .box {
+    background-color: rgb(255, 255, 255);
+    width: 100px;
+    height: 100px;
+    float: left;
+  }
+
+  .box_occupy_1 {
+    background-color: rgb(243, 13, 13);
+    width: 100px;
+    height: 100px;
+    float: left;
+  }
+
+  .box_occupy_2 {
+    background-color: rgb(13, 16, 233);
+    width: 100px;
+    height: 100px;
+    float: left;
+  }
+
+  .controllerButton {
+    display: inline-block;
+    padding: 15px 25px;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    outline: none;
+    color: #fff;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 9px #999;
+    margin: 10px;
+  }
+
+  .controllerButton:focus {
+    display: inline-block;
+    padding: 15px 25px;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    outline: none;
+    color: #fff;
+    background-color: #a85255;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px #999;
+    margin: 10px;
+  }
+  .controllerButton:hover {
+    background-color: #adb868
+  }
+
+  .controllerButton:active {
+    background-color: #3e8e41;
+    box-shadow: 0 5px #666;
+    transform: translateY(4px);
+  }
+
+  input {
+    outline-style: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 14px 14px;
+    width: 80px;
+    font-size: 16px;
+    margin: 10px;
+    box-shadow: 0 5px #666;
+  }
+
+  .title {
+    color: #fafafa;
+    letter-spacing: 0;
+    text-shadow: 0px 1px 0px #999, 0px 2px 0px #888, 0px 3px 0px #777, 0px 4px 0px #666, 0px 5px 0px #555, 0px 6px 0px #444, 0px 7px 0px #333, 0px 8px 7px #001135;
+  }
+</style>
+<script>
+  let S1 = 0
+  let S2 = 0
+
+  const socket = new WebSocket('ws://localhost:8222/ws'); // 使用实际的服务器地址和端口
+  // 初始化棋盘
+  let board = [
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+    ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'],
+    ['-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1', '0', '-1'],
+  ];
+  // 获取棋盘元素
+  let chessboard = document.getElementById('chessboard');
+  let messages = document.getElementById('messages');
+  let AITurn = 0
+  let lastmoves = []
+  let Moves = [];
+  function Move(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+  function playSound() {
+    var audio = new Audio('./static/move.wav');
+    audio.play();
+  }
+  // 显示棋盘
+  function displayBoard() {// 遍历棋盘数组，生成格子并添加到棋盘元素中
+    // 遍历棋盘数组，生成格子并添加到棋盘元素中
+    // console.log("display")
+    chessboard.innerHTML = ''; // 清空当前的棋盘显示
+    for (let i = 0; i < board.length; i++) {
+      for (let j = 0; j < board[i].length; j++) {
+        let gridCell = document.createElement('div');
+        k = 0
+        for (k = 0; k < lastmoves.length; k++) {
+          lx = lastmoves[k].x
+          ly = lastmoves[k].y
+          if (i == lx && j == ly) {
+            console.log(lx, ly)
+            if (i & 1 == 1) {
+              gridCell.className = 'vEdge_Clicked_lastmove'
+            } else {
+              gridCell.className = 'hEdge_Clicked_lastmove'
+            }
+            chessboard.appendChild(gridCell);
+            break
+          }
+        }
+        if (lastmoves.length != 0 && k != lastmoves.length) {
+          continue
+        }
+        if (board[i][j] === '-1') {
+          gridCell.className = 'dot';
+        } else if ((i + j) & 1 == 1 && board[i][j] == 0) {
+          //未移动的边
+          if (j & 1 === 1) {
+            //横边
+            gridCell.className = 'hEdge';
+            gridCell.addEventListener('click', function () {
+              // gridCell.classList.remove('hEdge');
+              // gridCell.classList.add('hEdge_Clicked');
+              board[i][j] = '1';
+
+              var move = new Move(i, j);
+              Moves.push(move)
+              var lastmove = new Move(i, j);
+              lastmoves.push(lastmove)
+              upBoard()
+              displayBoard(); // 刷新棋盘显示
+
+              //ai移动
+              GetMessage()
+            })
+          } else {
+            //竖边
+            gridCell.className = 'vEdge';
+            gridCell.addEventListener('click', function () {
+              // gridCell.classList.remove('vEdge');
+              // gridCell.classList.add('vEdge_Clicked');
+              board[i][j] = '1';
+
+              var move = new Move(i, j);
+              Moves.push(move)
+              var lastmove = new Move(i, j);
+              lastmoves.push(lastmove)
+              upBoard()
+              displayBoard(); // 刷新棋盘显示
+              //ai移动
+             //GetMessage()
+              console.log(board)
+            })
+          }
+        } else if ((i + j) & 1 == 1 && board[i][j] == 1) {
+          //已经移动的边
+          if (j & 1 === 1) {//横边
+            gridCell.className = 'hEdge_Clicked';
+          } else {//竖边
+            gridCell.className = 'vEdge_Clicked';
+          }
+        } else if (i & 1 == 1 && j & 1 == 1) {
+
+          //格
+          if (board[i][j] == 0) {
+            gridCell.className = 'box';
+          } else if (board[i][j] == 1) {
+            gridCell.className = 'box_occupy_1';
+          } else if (board[i][j] == 2) {
+            gridCell.className = 'box_occupy_2';
+          }
+
+        }
+
+        chessboard.appendChild(gridCell);
+      }
+    }
+
+    messages.innerText = "红方: " + S1 + "   蓝方: " + S2
+
+    lastmoves = []
+  }
+  //下边，发送数据， 更新棋盘数据但不更新显示，用于每次点击边
+  function upBoard() {
+    flag = false
+    for (let i = 1; i < board.length; i += 2) {
+      for (let j = 1; j < board[i].length; j += 2) {
+        if (board[i][j] == 0) {
+          //如果没占领的有格子，继续
+          if (checkAndUpdateCellValue(i, j, AITurn ^ 3)) {
+            flag = true
+          }
+        }
+
+      }
+    }
+    if (!flag||status()!=0) {
+      //socket发送moves
+      //...
+      var str = 'Moves-'
+      for (i = 0; i < Moves.length; i++) {
+        if (i < Moves.length - 1) {
+          str += Moves[i].x + "," + Moves[i].y + "-"
+        } else {
+          str += Moves[i].x + "," + Moves[i].y
+        }
+      }
+      SendMessage(str)
+      playSound()
+      Moves = []
+
+    }
+  }
+
+  // 更新棋盘，信息，但是不更新显示
+  function reflushBoard(color) {
+    for (let i = 1; i < board.length; i += 2) {
+      for (let j = 1; j < board[i].length; j += 2) {
+        if (board[i][j] == 0) {
+          //如果没占领的有格子，继续
+          checkAndUpdateCellValue(i, j, color)
+        }
+
+      }
+    }
+
+
+  }
+  // 检查并更新格子的值
+  function checkAndUpdateCellValue(row, col, color) {
+
+    if (
+      board[row - 1][col] == '1' &&
+      board[row + 1][col] == '1' &&
+      board[row][col - 1] == '1' &&
+      board[row][col + 1] == '1'
+    ) {
+      board[row][col] = color;
+      if (color == 1) {
+        S1++
+      } else if (color == 2) {
+        S2++
+      }
+      return true
+    }
+    return false
+  }
+  //开始
+  function start() {
+
+    if (AITurn == 0) {
+      window.alert("请选择您的先后手后开始")
+      return
+    }
+
+    var rName = document.getElementById("RName").value;
+    var bName = document.getElementById("BName").value;
+
+    if (rName == "" || bName == "") {
+      window.alert("请输入双方名称后开始")
+      return;
+    }
+
+    document.getElementById("chessboard").style.display = "block";//显示
+    document.getElementById("controller").style.display = "none";//显示
+    document.getElementById("messages").style.display = "block";//显示
+
+    displayBoard()
+
+
+    Connect()
+    SendMessage("NewGame," + AITurn + "," + rName + "," + bName)
+    if (AITurn == 1) {
+      GetMessage()
+    }
+
+
+
+  }
+  //游戏状态
+  function status() {
+    if ((S1 + S2) < 25) {
+      return 0
+    } else if (S1 > S2) {
+      return 1
+    } else {
+      return 2
+    }
+  }
+  //设置ai颜色
+  function setAITurn(t) {
+    AITurn = t
+
+  }
+  function Connect() {
+    // 监听连接成功事件
+    socket.addEventListener('open', () => {
+    });
+
+  }
+  function GetMessage() {
+    // 监听接收消息事件
+    socket.addEventListener('message', (event) => {
+      let str = ""
+      str = event.data
+      var ms = str.split("Moves-")
+      var es = ms[1]
+      if (es.includes("-")) {
+        //多次移动
+        var e = es.split("-")
+
+        for (i = 0; i < e.length; i++) {
+          xy = e[i].split(",")
+
+          x = xy[0]
+          y = xy[1]
+          board[x][y] = 1
+          var move = new Move(x, y);
+          lastmoves.push(move)
+
+        }
+      } else {
+        //单次
+        var xy = es.split(",")
+        x = xy[0]
+        y = xy[1]
+        board[x][y] = 1
+        var move = new Move(x, y);
+        lastmoves.push(move)
+      }
+
+      reflushBoard(AITurn)
+      displayBoard(); // 刷新棋盘显示
+      playSound()
+
+
+    });
+  }
+  function SendMessage(msg) {
+    // 发送消息到服务器
+    console.log(msg)
+    socket.send(msg);
+  }
+</script>
+
+</html>
