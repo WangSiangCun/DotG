@@ -195,9 +195,6 @@ func Expand(n *UCTNode) *UCTNode {
 		n.Parents.rwMutex.Lock()
 		defer n.Parents.rwMutex.Unlock()
 	}
-	if n.Visit < 15 {
-		return n
-	}
 
 	if len(n.UnTriedMove) != 0 {
 		///已扩展，未扩展完毕
@@ -225,11 +222,11 @@ func Expand(n *UCTNode) *UCTNode {
 			return n
 		}
 
-		maxL := min(len(ees), MaxChild)
+		//	maxL := min(len(ees), MaxChild)
 		//打乱
-		Shuffle(ees)
+		//Shuffle(ees)
 		//只要前maxL个
-		n.UnTriedMove = ees[:maxL]
+		n.UnTriedMove = ees
 		//fmt.Println(ees)
 		//fmt.Println(n.UnTriedMove)
 		//生产新结点
@@ -288,11 +285,14 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 				if deep > MaxDeep {
 					MaxDeep = deep
 				}
+				if nowN.B.Status() == 0 {
+					//扩展
+					nowN = Expand(nowN)
 
-				//扩展
-				nowN = Expand(nowN)
-
-				res = Simulation(nowN.B)
+					res = Simulation(nowN.B)
+				} else {
+					res = nowN.B.Status()
+				}
 
 				for nowN != nil {
 					nowN.BackUp(res)
@@ -322,26 +322,9 @@ func Search(b *board.Board, mode int, isV bool) (es []*board.Edge) {
 	return bestChild.LastMove
 }
 func AdjustUCB(b *board.Board) {
-	switch {
-	case b.Turn <= 11:
-		C = math.Sqrt(2.0) * 0.70
-	case b.Turn <= 13:
-		C = math.Sqrt(2.0) * 0.65
-	case b.Turn <= 15:
-		C = math.Sqrt(2.0) * 0.60
-	case b.Turn <= 17:
-		C = math.Sqrt(2.0) * 0.50
-	case b.Turn <= 19:
-		C = math.Sqrt(2.0) * 0.45
-	case b.Turn <= 23:
-		C = math.Sqrt(2.0) * 0.30
-	case b.Turn <= 27:
-		C = math.Sqrt(2.0) * 0.25
-	case b.Turn <= 31:
-		C = math.Sqrt(2.0) * 0.20
-	default:
-		C = math.Sqrt(2.0) * 0.20
-	}
+
+	C = math.Sqrt(2.0) * 0.60
+
 }
 func AdjustMaxChild(b *board.Board) {
 	switch {
