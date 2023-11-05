@@ -369,14 +369,6 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 	}
 
 }
-func min(a, b int) int {
-	if a > b {
-		return b
-	} else {
-		return a
-	}
-}
-
 func printTree(node *UCTNode, depth int, writer *os.File) {
 	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, node.LastMove)
 
@@ -384,7 +376,6 @@ func printTree(node *UCTNode, depth int, writer *os.File) {
 		printTree(child, depth+1, writer)
 	}
 }
-
 func getIndent(depth int) string {
 	indent := ""
 	for i := 0; i < depth; i++ {
