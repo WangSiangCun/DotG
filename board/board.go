@@ -39,11 +39,6 @@ type DTree struct {
 	Type  int //0 死环，1死链
 }
 
-// BoxLocation 仅用于优化
-type BoxLocation struct {
-	X, Y int
-}
-
 // 状态机
 var (
 	//A类检查 对应方向必须的类型
@@ -320,35 +315,6 @@ func (b *Board) String() string {
 	return builder.String()
 }
 
-// IsBox 判断是否为Box
-func IsBox(boxX, boxY int) bool {
-	if boxX > 0 && boxX < 10 && boxY > 0 && boxY < 10 {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (b *Board) GetPlayerMove() {
-	n := 0
-	x, y := 0, 0
-	num := []*Edge{}
-	for {
-		fmt.Println("x")
-		fmt.Scan(&x)
-		fmt.Println("y")
-		fmt.Scan(&y)
-		num = append(num, &Edge{x, y})
-		fmt.Println("------1:继续输入，2：结束--------")
-		fmt.Scan(&n)
-		if n == 2 {
-			break
-		}
-	}
-	b.MoveAndCheckout(&Edge{x, y})
-	fmt.Println(b)
-}
-
 // Status 获得游戏状态
 func (b *Board) Status() int {
 	if b.S[1]+b.S[2] < 25 {
@@ -450,19 +416,18 @@ func (b *Board) MoveAndCheckoutForPrint(edges ...*Edge) (isOc bool) {
 }
 
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
-func (b *Board) RandomMoveByCheck() (edge [][]*Edge) {
+func (b *Board) RandomMoveByCheck() {
 	ees := b.GetMove()
 	if ees == nil {
 		for b.Status() == 0 {
 			endMoves := b.GetEndMove()
 			b.MoveAndCheckout(endMoves...)
 		}
-
-		return nil
+		return
 	}
 	randInt := rand.Intn(len(ees))
 	b.MoveAndCheckout(ees[randInt]...)
-	return ees
+	return
 }
 
 // GetBoxType 获取格子的类型
@@ -495,46 +460,6 @@ func (b *Board) GetBoxType(boxX, boxY int) int {
 	} else {
 		return 9
 	}
-}
-
-// GetOneEdgeOfMinChain 获取最短的链的一条边
-func (b *Board) GetOneEdgeOfMinChain() *Edge {
-	//没有死树，只能走链
-	//获取链边
-	minL := 26
-	var minChain *Chain
-	chains := b.GetChains()
-	for _, chain := range chains {
-		if chain.Length < minL {
-			minL = chain.Length
-			minChain = chain
-			if chain.Length == 1 {
-				break
-			}
-		}
-
-	}
-
-	//死格
-	if minChain == nil {
-		return nil
-	}
-	//如果是二格短链则有两种方式,一种对手能双交，一种不能
-	if minL == 2 {
-		//获取中间的那一条
-		boxX, boxY := minChain.Endpoint[0].X, minChain.Endpoint[0].Y
-		for i := 0; i < 4; i++ {
-			edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-			nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-			f := b.GetFByBI(nextBX, nextBY)
-			if f == 2 && b.State[edgeX][edgeY] == 0 {
-				return &Edge{edgeX, edgeY}
-			}
-		}
-	}
-	//如果是长链,或者一格短链
-	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
-
 }
 
 // GetOneEdgeOfChains 获取链们的一条边(含组合链)
@@ -631,35 +556,6 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 		}
 	}
 	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
-
-}
-
-// GetEdgesOfAllChain 获取所有的链的一条边
-func (b *Board) GetEdgesOfAllChain() (es []*Edge) {
-	//没有死树，只能走链
-	//获取链边
-	chains := b.GetChains()
-
-	for _, chain := range chains {
-		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-		if chain.Length == 2 {
-			//中间的那条
-			for i := 0; i < 4; i++ {
-				edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-				nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-				f := b.GetFByBI(nextBX, nextBY)
-				if f == 2 && b.State[edgeX][edgeY] == 0 {
-					es = append(es, &Edge{edgeX, edgeY})
-					break
-				}
-			}
-		} else {
-			edge := b.GetOneEdgeByBI(boxX, boxY)
-			es = append(es, edge)
-
-		}
-	}
-	return es
 
 }
 
@@ -1021,6 +917,7 @@ func (b *Board) GetChain(boxX, boxY int, boxesMark map[int]bool, chain *Chain, i
 	}
 	// 如果是第一个监测
 	if isStart {
+		//只有一格，首尾都是自己
 		if len(chain.Endpoint) == 1 {
 			chain.Endpoint = append(chain.Endpoint, b.Boxes[index])
 		}
@@ -1074,31 +971,6 @@ func (b *Board) GetFByE(edge *Edge) (boxesF [2]int) {
 		}
 	}
 	return
-}
-
-// GetEdgeByBI 通过格子下标获得格子所有边
-func (b *Board) GetEdgeByBI(boxI, boxJ int) (edges []*Edge) {
-	f := b.GetFByBI(boxI, boxJ)
-	if f != 0 {
-		//上
-		if b.State[boxI-1][boxJ] == 0 {
-			edges = append(edges, &Edge{boxI - 1, boxJ})
-		}
-		//下
-		if b.State[boxI+1][boxJ] == 0 {
-			edges = append(edges, &Edge{boxI + 1, boxJ})
-		}
-		//左
-		if b.State[boxI][boxJ-1] == 0 {
-			edges = append(edges, &Edge{boxI, boxJ - 1})
-		}
-		//右
-		if b.State[boxI][boxJ+1] == 0 {
-			edges = append(edges, &Edge{boxI, boxJ + 1})
-
-		}
-	}
-	return edges
 }
 
 // GetOneEdgeByBI 通过格子下标获得格子所有边
@@ -1469,33 +1341,6 @@ func (b *Board) GetDTreeEdges() (doubleCrossEdges, allEdges []*Edge, t int) {
 
 }
 
-// Get2FEdge 获取移动后不会被捕获的边
-func (b *Board) Get2FEdge() (edges []*Edge) {
-	/*defer func() {
-		fmt.Println(edges)
-	}()*/
-	//获取寻常边
-	for i := 0; i < 11; i++ {
-		for j := 0; j < 11; j++ { //正常11*11=121次 这里25次遍历,但是操作数基本一致
-
-			if (i+j)&1 == 1 && b.State[i][j] == 0 {
-				he := Edge{i, j}
-				boxesF := b.GetFByE(&he)
-				// 两边格子freedom大于3的边
-				if (boxesF[0] >= 3 || boxesF[0] == -1) && (boxesF[1] >= 3 || boxesF[1] == -1) {
-
-					//fmt.Println(b, b.State[i][j], i, j, boxesF)
-					edges = append(edges, &he)
-				}
-			}
-
-		}
-
-	}
-	//fmt.Println("2F:", edges)
-	return
-}
-
 // GetFrontMoveByTurn 存在安全边时的走法 获取前期走法边
 func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	nB := CopyBoard(b)
@@ -1580,6 +1425,8 @@ func (b *Board) GetFrontMoveByTurn() (ees [][]*Edge) {
 	}
 	return
 }
+
+// GetEdge 返回一个边
 func (b *Board) GetEdge() *Edge {
 	for i := 0; i < 11; i++ {
 		for j := 0; j < 11; j++ {

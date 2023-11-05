@@ -25,16 +25,6 @@ type UCTNode struct {
 	rwMutex     sync.RWMutex
 }
 
-type HashKey struct {
-	M   [2]uint64
-	Now int
-}
-
-type HashValue struct {
-	Visit, Win int
-	Turn       int
-}
-
 var (
 	C         float64       = 1.4142135623730951
 	ThreadNum int           = 4
@@ -222,10 +212,11 @@ func Expand(n *UCTNode) *UCTNode {
 			return n
 		}
 
-		//	maxL := min(len(ees), MaxChild)
+		//maxL := min(len(ees), MaxChild)
 		//打乱
 		//Shuffle(ees)
 		//只要前maxL个
+		//n.UnTriedMove = ees[:maxL]
 		n.UnTriedMove = ees
 		//fmt.Println(ees)
 		//fmt.Println(n.UnTriedMove)
@@ -378,14 +369,6 @@ func AdjustTimeLimit(b *board.Board, mode int) {
 	}
 
 }
-func min(a, b int) int {
-	if a > b {
-		return b
-	} else {
-		return a
-	}
-}
-
 func printTree(node *UCTNode, depth int, writer *os.File) {
 	fmt.Fprintf(writer, "%v %v %v:%v/%v es: %v\n", depth, getIndent(depth), node.B.Now, node.Win, node.Visit, node.LastMove)
 
@@ -393,7 +376,6 @@ func printTree(node *UCTNode, depth int, writer *os.File) {
 		printTree(child, depth+1, writer)
 	}
 }
-
 func getIndent(depth int) string {
 	indent := ""
 	for i := 0; i < depth; i++ {
