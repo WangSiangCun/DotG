@@ -25,16 +25,6 @@ type UCTNode struct {
 	rwMutex     sync.RWMutex
 }
 
-type HashKey struct {
-	M   [2]uint64
-	Now int
-}
-
-type HashValue struct {
-	Visit, Win int
-	Turn       int
-}
-
 var (
 	C         float64       = 1.4142135623730951
 	ThreadNum int           = 4
@@ -222,10 +212,11 @@ func Expand(n *UCTNode) *UCTNode {
 			return n
 		}
 
-		//	maxL := min(len(ees), MaxChild)
+		//maxL := min(len(ees), MaxChild)
 		//打乱
 		//Shuffle(ees)
 		//只要前maxL个
+		//n.UnTriedMove = ees[:maxL]
 		n.UnTriedMove = ees
 		//fmt.Println(ees)
 		//fmt.Println(n.UnTriedMove)

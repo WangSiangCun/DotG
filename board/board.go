@@ -39,11 +39,6 @@ type DTree struct {
 	Type  int //0 死环，1死链
 }
 
-// BoxLocation 仅用于优化
-type BoxLocation struct {
-	X, Y int
-}
-
 // 状态机
 var (
 	//A类检查 对应方向必须的类型
@@ -320,35 +315,6 @@ func (b *Board) String() string {
 	return builder.String()
 }
 
-// IsBox 判断是否为Box
-func IsBox(boxX, boxY int) bool {
-	if boxX > 0 && boxX < 10 && boxY > 0 && boxY < 10 {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (b *Board) GetPlayerMove() {
-	n := 0
-	x, y := 0, 0
-	num := []*Edge{}
-	for {
-		fmt.Println("x")
-		fmt.Scan(&x)
-		fmt.Println("y")
-		fmt.Scan(&y)
-		num = append(num, &Edge{x, y})
-		fmt.Println("------1:继续输入，2：结束--------")
-		fmt.Scan(&n)
-		if n == 2 {
-			break
-		}
-	}
-	b.MoveAndCheckout(&Edge{x, y})
-	fmt.Println(b)
-}
-
 // Status 获得游戏状态
 func (b *Board) Status() int {
 	if b.S[1]+b.S[2] < 25 {
@@ -450,19 +416,18 @@ func (b *Board) MoveAndCheckoutForPrint(edges ...*Edge) (isOc bool) {
 }
 
 // RandomMoveByCheck 随机移动,目前为GetDGridEdges()后GetEdgesByIdentifyingChains,自带checkout
-func (b *Board) RandomMoveByCheck() (edge [][]*Edge) {
+func (b *Board) RandomMoveByCheck() {
 	ees := b.GetMove()
 	if ees == nil {
 		for b.Status() == 0 {
 			endMoves := b.GetEndMove()
 			b.MoveAndCheckout(endMoves...)
 		}
-
-		return nil
+		return
 	}
 	randInt := rand.Intn(len(ees))
 	b.MoveAndCheckout(ees[randInt]...)
-	return ees
+	return
 }
 
 // GetBoxType 获取格子的类型
@@ -631,35 +596,6 @@ func (b *Board) GetOneEdgeOfChains() *Edge {
 		}
 	}
 	return b.GetOneEdgeByBI(minChain.Endpoint[0].X, minChain.Endpoint[0].Y)
-
-}
-
-// GetEdgesOfAllChain 获取所有的链的一条边
-func (b *Board) GetEdgesOfAllChain() (es []*Edge) {
-	//没有死树，只能走链
-	//获取链边
-	chains := b.GetChains()
-
-	for _, chain := range chains {
-		boxX, boxY := chain.Endpoint[0].X, chain.Endpoint[0].Y
-		if chain.Length == 2 {
-			//中间的那条
-			for i := 0; i < 4; i++ {
-				edgeX, edgeY := boxX+d1[i][0], boxY+d1[i][1]
-				nextBX, nextBY := boxX+d2[i][0], boxY+d2[i][1]
-				f := b.GetFByBI(nextBX, nextBY)
-				if f == 2 && b.State[edgeX][edgeY] == 0 {
-					es = append(es, &Edge{edgeX, edgeY})
-					break
-				}
-			}
-		} else {
-			edge := b.GetOneEdgeByBI(boxX, boxY)
-			es = append(es, edge)
-
-		}
-	}
-	return es
 
 }
 
